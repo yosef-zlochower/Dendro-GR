@@ -185,6 +185,7 @@ namespace bssn
             for(unsigned int ele = eleLocalBegin; ele< eleLocalEnd; ele++)
             {
                 const unsigned int ln = 1u<<(m_uiMaxDepth-pNodes[ele].getLevel());
+		double rd1 = 1e100;
 
                 bool isNearTobh1 = false;
                 bool isNearTobh2 = false;
@@ -202,7 +203,9 @@ namespace bssn
                     const Point oct_mid = Point(x,y,z);
                     pMesh->octCoordToDomainCoord(oct_mid,temp);
                 
-                    const double rd1 = temp.abs();
+                    const double rtemp = temp.abs();
+	 	    
+		    if(rd1 > rtemp){rd1 = rtemp;}
 
                 }
 
