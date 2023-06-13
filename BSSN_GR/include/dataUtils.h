@@ -50,6 +50,7 @@ namespace bssn
      * @param[in] bhLoc : BH location 
      */
     bool isRemeshBH(ot::Mesh* pMesh, const Point* bhLoc);
+    bool isRemeshSinS(ot::Mesh* pMesh, const Point* bhLoc);
 
     /**
      * @brief refine only based on the alpha variable event horizon. 

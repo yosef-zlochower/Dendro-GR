@@ -156,6 +156,185 @@ namespace bssn
         }
     }
 
+    bool isRemeshSinS(ot::Mesh* pMesh, const Point* bhLoc)
+    {
+        
+        const double r_near[2] = {bssn::BSSN_BH1_AMR_R,bssn::BSSN_BH2_AMR_R};
+        const double r_far[2]  =  {2.5 * r_near[0], 2.5 * r_near[1] };
+        const unsigned int DEPTH_LEV_OFFSET = 2;
+
+        const unsigned int eleLocalBegin = pMesh->getElementLocalBegin();
+        const unsigned int eleLocalEnd = pMesh->getElementLocalEnd();
+        bool isOctChange=false;
+        bool isOctChange_g =false;
+        Point d1, d2, temp;
+        const double dBH=(bhLoc[0]-bhLoc[1]).abs();
+        const unsigned int refLevMin = std::min(bssn::BSSN_BH1_MAX_LEV,bssn::BSSN_BH2_MAX_LEV);
+        
+        std::vector<unsigned int> refine_flags;
+        if(pMesh->isActive())
+        {
+
+            // if(!pMesh->getMPIRank())
+            //     std::cout<<"bh distance: "<<dBH<<std::endl;
+
+            const ot::TreeNode * pNodes = pMesh->getAllElements().data();
+            refine_flags.resize(pMesh->getNumLocalMeshElements(),OCT_NO_CHANGE);
+
+            // refine pass. 
+            for(unsigned int ele = eleLocalBegin; ele< eleLocalEnd; ele++)
+            {
+                const unsigned int ln = 1u<<(m_uiMaxDepth-pNodes[ele].getLevel());
+
+                bool isNearTobh1 = false;
+                bool isNearTobh2 = false;
+
+                bool isNearFarTobh1=false;
+                bool isNearFarTobh2=false;
+
+                for(unsigned int kk=0; kk < 2; kk++)
+                for(unsigned int jj=0; jj < 2; jj++)
+                for(unsigned int ii=0; ii < 2; ii++)
+                {
+                    const double x = pNodes[ele].minX() + ii * ln;
+                    const double y = pNodes[ele].minY() + jj * ln;
+                    const double z = pNodes[ele].minZ() + kk * ln;
+                    const Point oct_mid = Point(x,y,z);
+                    pMesh->octCoordToDomainCoord(oct_mid,temp);
+                
+                    d1 = temp -bhLoc[0]; 
+                    d2 = temp -bhLoc[1];
+                    const double rd1 = d1.abs();
+                    const double rd2 = d2.abs();
+
+                    if(!isNearTobh1) 
+                        isNearTobh1  = (rd1 <= r_near[0]);
+
+                    if(!isNearTobh2) 
+                        isNearTobh2  = (rd2 <= r_near[1]);
+
+                    if(!isNearFarTobh1)
+                        isNearFarTobh1 = ((rd1> r_near[0]) && (rd1 <= r_far[0]));
+
+                    if(!isNearFarTobh2)
+                        isNearFarTobh2 = ((rd2> r_near[1]) && (rd2 <= r_far[1]));
+
+                }
+                
+                
+
+                if(dBH<0.1)
+                { 
+                    // BHs have merged. 
+
+                    if( isNearTobh1 || isNearTobh2 )
+                    {
+
+                        if( ( pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1)< refLevMin )
+                            refine_flags[ele-eleLocalBegin] = OCT_SPLIT;
+                        else if ( ( pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1)> refLevMin )
+                            refine_flags[ele-eleLocalBegin] = OCT_COARSE;
+                        else
+                            refine_flags[ele-eleLocalBegin] = OCT_NO_CHANGE;
+                        
+
+                    }else if(isNearFarTobh1 || isNearFarTobh2)
+                    {
+                        refine_flags[ele-eleLocalBegin] = OCT_NO_CHANGE;
+                    }else
+                    {
+                        refine_flags[ele-eleLocalBegin] = OCT_COARSE;
+                    }
+
+
+                }
+                else
+                {
+                    // BHs are in spiral
+
+                    if( isNearTobh1 || isNearTobh2 )
+                    {
+                        if(isNearTobh1)
+                        {
+                            if( ( pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1)< bssn::BSSN_BH1_MAX_LEV )
+                                refine_flags[ele-eleLocalBegin] = OCT_SPLIT;
+                            else if ( ( pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1)> bssn::BSSN_BH1_MAX_LEV )
+                                refine_flags[ele-eleLocalBegin] = OCT_COARSE;
+                            else
+                                refine_flags[ele-eleLocalBegin] = OCT_NO_CHANGE;
+                        }else
+                        {
+                            if( ( pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1)< bssn::BSSN_BH2_MAX_LEV )
+                                refine_flags[ele-eleLocalBegin] = OCT_SPLIT;
+                            else if ( ( pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1)> bssn::BSSN_BH2_MAX_LEV )
+                                refine_flags[ele-eleLocalBegin] = OCT_COARSE;
+                            else
+                                refine_flags[ele-eleLocalBegin] = OCT_NO_CHANGE;
+                        }
+
+                    }else if(isNearFarTobh1 || isNearFarTobh2)
+                    {
+                        //refine_flags[ele-eleLocalBegin] = OCT_NO_CHANGE;
+                        if(isNearFarTobh1)
+                        {
+                            if( ( pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1) < (bssn::BSSN_BH1_MAX_LEV - DEPTH_LEV_OFFSET) )
+                                refine_flags[ele-eleLocalBegin] = OCT_SPLIT;
+                            else if ( ( pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1) > (bssn::BSSN_BH1_MAX_LEV - DEPTH_LEV_OFFSET))
+                                refine_flags[ele-eleLocalBegin] = OCT_COARSE;
+                            else
+                                refine_flags[ele-eleLocalBegin] = OCT_NO_CHANGE;
+                        }else
+                        {
+                            if( (pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1) < (bssn::BSSN_BH2_MAX_LEV - DEPTH_LEV_OFFSET) )
+                                refine_flags[ele-eleLocalBegin] = OCT_SPLIT;
+                            else if ( (pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1) > (bssn::BSSN_BH2_MAX_LEV - DEPTH_LEV_OFFSET) )
+                                refine_flags[ele-eleLocalBegin] = OCT_COARSE;
+                            else
+                                refine_flags[ele-eleLocalBegin] = OCT_NO_CHANGE;
+                        }
+
+                    }else
+                    {
+                        refine_flags[ele-eleLocalBegin] = OCT_COARSE;
+                    }
+
+                }
+                
+                 
+                // refinement on the GW when the BH gets closer. 
+                #ifdef BSSN_EXTRACT_GRAVITATIONAL_WAVES
+                    if(dBH<0.1)
+                    {
+                        const unsigned int L_MIN = std::max(2,(int)bssn::BSSN_MAXDEPTH-4);
+                        const double dr = temp.abs();
+
+                        for(unsigned int i=0; i  < GW::BSSN_GW_NUM_RADAII; i++)
+                        {
+                            if(fabs(dr-GW::BSSN_GW_RADAII[i])<1)
+                            {
+                                if(pNodes[ele].getLevel()<L_MIN)
+                                    refine_flags[ele-eleLocalBegin] = OCT_SPLIT;
+                                else
+                                    refine_flags[ele-eleLocalBegin] = OCT_NO_CHANGE;
+                            }
+                        }
+                    }
+                #endif
+
+            }
+
+            isOctChange = pMesh->setMeshRefinementFlags(refine_flags);
+
+        }
+
+        bool isOctChanged_g;
+        MPI_Allreduce(&isOctChange,&isOctChanged_g,1,MPI_CXX_BOOL,MPI_LOR,pMesh->getMPIGlobalCommunicator());
+        return isOctChanged_g;
+
+        
+
+    }
+
     bool isRemeshBH(ot::Mesh* pMesh, const Point* bhLoc)
     {
         
