@@ -167,7 +167,6 @@ namespace bssn
         const unsigned int eleLocalEnd = pMesh->getElementLocalEnd();
         bool isOctChange=false;
         bool isOctChange_g =false;
-        Point d1, d2, temp;
         const double dBH=(bhLoc[0]-bhLoc[1]).abs();
         const unsigned int refLevMin = std::min(bssn::BSSN_BH1_MAX_LEV,bssn::BSSN_BH2_MAX_LEV);
         
@@ -185,103 +184,95 @@ namespace bssn
             for(unsigned int ele = eleLocalBegin; ele< eleLocalEnd; ele++)
             {
                 const unsigned int ln = 1u<<(m_uiMaxDepth-pNodes[ele].getLevel());
-		double rd1 = 1e100;
+		            double rd1 = 1e100;
 
-                bool isNearTobh1 = false;
-                bool isNearTobh2 = false;
-
-                bool isNearFarTobh1=false;
-                bool isNearFarTobh2=false;
 
                 for(unsigned int kk=0; kk < 2; kk++)
-                for(unsigned int jj=0; jj < 2; jj++)
-                for(unsigned int ii=0; ii < 2; ii++)
                 {
-                    const double x = pNodes[ele].minX() + ii * ln;
-                    const double y = pNodes[ele].minY() + jj * ln;
-                    const double z = pNodes[ele].minZ() + kk * ln;
-                    const Point oct_mid = Point(x,y,z);
-                    pMesh->octCoordToDomainCoord(oct_mid,temp);
+                    for(unsigned int jj=0; jj < 2; jj++)
+                    {
+                        for(unsigned int ii=0; ii < 2; ii++)
+                        {
+                            const double x = pNodes[ele].minX() + ii * ln;
+                            const double y = pNodes[ele].minY() + jj * ln;
+                            const double z = pNodes[ele].minZ() + kk * ln;
+                            const Point oct_mid = Point(x,y,z);
+                            Point temp;
+                            pMesh->octCoordToDomainCoord(oct_mid,temp);
                 
-                    const double rtemp = temp.abs();
+                            const double rtemp = temp.abs();
 	 	    
-		    if(rd1 > rtemp){rd1 = rtemp;}
-
+		                        if(rd1 > rtemp)
+                            {
+                                rd1 = rtemp;
+                            }
+                        }
+                    }
                 }
 
+                if (rd1 > 200)
                 {
-                    // BHs are in spiral
-                   if (rd1 > 200)
+                    if ( ( pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1) > bssn::BSSN_MINDEPTH + 1 )
                     {
-                      if ( ( pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1)> bssn::BSSN_MINDEPTH )
-                      {
-                                refine_flags[ele-eleLocalBegin] = OCT_COARSE;
-                      }
-                      else if  ( ( pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1)< bssn::BSSN_MINDEPTH )
-                      {
-                                refine_flags[ele-eleLocalBegin] = OCT_SPLIT;
-                      }
-                      else
-                      {
-                                refine_flags[ele-eleLocalBegin] = OCT_NO_CHANGE;
-                      }
-
+                        refine_flags[ele-eleLocalBegin] = OCT_COARSE;
                     }
-
-                    else if (rd1 <= 200 && rd1 > 100)
+                    else if  ( ( pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1) < bssn::BSSN_MINDEPTH + 1 )
                     {
-                      if ( ( pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1)> bssn::BSSN_MINDEPTH + 1 )
-                      {
-                                refine_flags[ele-eleLocalBegin] = OCT_COARSE;
-                      }
-                      else if  ( ( pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1)< bssn::BSSN_MINDEPTH + 1 )
-                      {
-                                refine_flags[ele-eleLocalBegin] = OCT_SPLIT;
-                      }
-                      else
-                      {
-                                refine_flags[ele-eleLocalBegin] = OCT_NO_CHANGE;
-                      }
-
+                        refine_flags[ele-eleLocalBegin] = OCT_SPLIT;
                     }
-                    else if (rd1 <= 100 && rd1 > 50)
+                    else
                     {
-                      if ( ( pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1)> bssn::BSSN_MINDEPTH + 2 )
-                      {
-                                refine_flags[ele-eleLocalBegin] = OCT_COARSE;
-                      }
-                      else if  ( ( pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1)< bssn::BSSN_MINDEPTH + 2 )
-                      {
-                                refine_flags[ele-eleLocalBegin] = OCT_SPLIT;
-                      }
-                      else
-                      {
-                                refine_flags[ele-eleLocalBegin] = OCT_NO_CHANGE;
-                      }
-
+                        refine_flags[ele-eleLocalBegin] = OCT_NO_CHANGE;
                     }
-                    else if (rd1 <= 50)
-                    {
-                      if ( ( pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1)> bssn::BSSN_MINDEPTH + 3 )
-                      {
-                                refine_flags[ele-eleLocalBegin] = OCT_COARSE;
-                      }
-                      else if  ( ( pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1)< bssn::BSSN_MINDEPTH + 3 )
-                      {
-                                refine_flags[ele-eleLocalBegin] = OCT_SPLIT;
-                      }
-                      else
-                      {
-                                refine_flags[ele-eleLocalBegin] = OCT_NO_CHANGE;
-                      }
-
-                    }
-
-
-
 
                 }
-                
+                else if (rd1 <= 200 && rd1 > 100)
+                {
+                    if ( ( pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1)> bssn::BSSN_MINDEPTH + 2 )
+                    {
+                              refine_flags[ele-eleLocalBegin] = OCT_COARSE;
+                    }
+                    else if  ( ( pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1)< bssn::BSSN_MINDEPTH + 2 )
+                    {
+                              refine_flags[ele-eleLocalBegin] = OCT_SPLIT;
+                    }
+                    else
+                    {
+                              refine_flags[ele-eleLocalBegin] = OCT_NO_CHANGE;
+                    }
+
+                }
+                else if (rd1 <= 100 && rd1 > 50)
+                {
+                    if ( ( pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1)> bssn::BSSN_MINDEPTH + 3 )
+                    {
+                              refine_flags[ele-eleLocalBegin] = OCT_COARSE;
+                    }
+                    else if  ( ( pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1)< bssn::BSSN_MINDEPTH + 3 )
+                    {
+                              refine_flags[ele-eleLocalBegin] = OCT_SPLIT;
+                    }
+                    else
+                    {
+                              refine_flags[ele-eleLocalBegin] = OCT_NO_CHANGE;
+                    }
+
+                }
+                else if (rd1 <= 50)
+                {
+                    if ( ( pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1)> bssn::BSSN_MINDEPTH + 4 )
+                    {
+                              refine_flags[ele-eleLocalBegin] = OCT_COARSE;
+                    }
+                    else if  ( ( pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1)< bssn::BSSN_MINDEPTH + 4 )
+                    {
+                              refine_flags[ele-eleLocalBegin] = OCT_SPLIT;
+                    }
+                    else
+                    {
+                              refine_flags[ele-eleLocalBegin] = OCT_NO_CHANGE;
+                    }
+                }
             }
 
             isOctChange = pMesh->setMeshRefinementFlags(refine_flags);
