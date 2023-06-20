@@ -170,6 +170,9 @@ namespace bssn
         const double dBH=(bhLoc[0]-bhLoc[1]).abs();
         const unsigned int refLevMin = std::min(bssn::BSSN_BH1_MAX_LEV,bssn::BSSN_BH2_MAX_LEV);
         
+        const double refinement_radii[] = {220, 110, 55 ,25, 10, 5 ,2, 1,0};
+        const int num_radii = sizeof(refinement_radii) / sizeof(double);
+
         std::vector<unsigned int> refine_flags;
         if(pMesh->isActive())
         {
@@ -210,13 +213,15 @@ namespace bssn
                     }
                 }
 
-                if (rd1 > 200)
+                for (int level = 0; level < num_radii; level ++)
                 {
-                    if ( ( pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1) > bssn::BSSN_MINDEPTH + 1 )
+                  if (rd1 >= refinement_radii[level])
+                  {
+                    if ( ( pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1) > bssn::BSSN_MINDEPTH + level )
                     {
                         refine_flags[ele-eleLocalBegin] = OCT_COARSE;
                     }
-                    else if  ( ( pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1) < bssn::BSSN_MINDEPTH + 1 )
+                    else if  ( ( pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1) < bssn::BSSN_MINDEPTH + level )
                     {
                         refine_flags[ele-eleLocalBegin] = OCT_SPLIT;
                     }
@@ -225,53 +230,8 @@ namespace bssn
                         refine_flags[ele-eleLocalBegin] = OCT_NO_CHANGE;
                     }
 
-                }
-                else if (rd1 <= 200 && rd1 > 100)
-                {
-                    if ( ( pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1)> bssn::BSSN_MINDEPTH + 2 )
-                    {
-                              refine_flags[ele-eleLocalBegin] = OCT_COARSE;
-                    }
-                    else if  ( ( pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1)< bssn::BSSN_MINDEPTH + 2 )
-                    {
-                              refine_flags[ele-eleLocalBegin] = OCT_SPLIT;
-                    }
-                    else
-                    {
-                              refine_flags[ele-eleLocalBegin] = OCT_NO_CHANGE;
-                    }
-
-                }
-                else if (rd1 <= 100 && rd1 > 50)
-                {
-                    if ( ( pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1)> bssn::BSSN_MINDEPTH + 3 )
-                    {
-                              refine_flags[ele-eleLocalBegin] = OCT_COARSE;
-                    }
-                    else if  ( ( pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1)< bssn::BSSN_MINDEPTH + 3 )
-                    {
-                              refine_flags[ele-eleLocalBegin] = OCT_SPLIT;
-                    }
-                    else
-                    {
-                              refine_flags[ele-eleLocalBegin] = OCT_NO_CHANGE;
-                    }
-
-                }
-                else if (rd1 <= 50)
-                {
-                    if ( ( pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1)> bssn::BSSN_MINDEPTH + 4 )
-                    {
-                              refine_flags[ele-eleLocalBegin] = OCT_COARSE;
-                    }
-                    else if  ( ( pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1)< bssn::BSSN_MINDEPTH + 4 )
-                    {
-                              refine_flags[ele-eleLocalBegin] = OCT_SPLIT;
-                    }
-                    else
-                    {
-                              refine_flags[ele-eleLocalBegin] = OCT_NO_CHANGE;
-                    }
+                    break;
+                  }
                 }
             }
 
