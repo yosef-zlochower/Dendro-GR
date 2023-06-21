@@ -200,14 +200,20 @@ namespace bssn
                             const double y = pNodes[ele].minY() + jj * ln;
                             const double z = pNodes[ele].minZ() + kk * ln;
                             const Point oct_mid = Point(x,y,z);
-                            Point temp;
+                            Point d1, d2, temp;
                             pMesh->octCoordToDomainCoord(oct_mid,temp);
+			    
+			    d1 = bhLoc[0];
+			    d2 = bhLoc[1];    
                 
                             const double rtemp = temp.abs();
+			    const double rp1 = (temp - d1).abs();
+			    const double rp2 = (temp - d2).abs();
+		            const double minr = std::min({rp1, rp2});  
 	 	    
-		                        if(rd1 > rtemp)
+		            if(rd1 > minr)
                             {
-                                rd1 = rtemp;
+                                rd1 = minr;
                             }
                         }
                     }
