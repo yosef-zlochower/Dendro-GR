@@ -170,9 +170,9 @@ namespace bssn
         const double dBH=(bhLoc[0]-bhLoc[1]).abs();
         const unsigned int refLevMin = std::min(bssn::BSSN_BH1_MAX_LEV,bssn::BSSN_BH2_MAX_LEV);
         
-        const double refinement_radii[] = {220, 110, 55 ,25, 10, 5 ,2, 1,0};
-        const int num_radii = sizeof(refinement_radii) / sizeof(double);
-
+        // const double refinement_radii[] = {220, 110, 55 ,25, 10, 5 ,2, 1,0};
+        // const int num_radii = sizeof(refinement_radii) / sizeof(double);
+        
         std::vector<unsigned int> refine_flags;
         if(pMesh->isActive())
         {
@@ -219,9 +219,9 @@ namespace bssn
                     }
                 }
 
-                for (int level = 0; level < num_radii; level ++)
+                for (int level = 0; level < bssn::BSSN_BOX_LEVELS; level ++)
                 {
-                  if (rd1 >= refinement_radii[level])
+                  if (rd1 >= bssn::BSSN_BOX_RADII[level])
                   {
                     if ( ( pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1) > bssn::BSSN_MINDEPTH + level )
                     {

@@ -159,6 +159,8 @@ namespace bssn
     /***@brief: derivs workspace*/
     double* BSSN_DERIV_WORKSPACE=nullptr;
 
+    unsigned int BSSN_BOX_LEVELS;
+    double BSSN_BOX_RADII[BSSN_BOX_MAX_RADII];
 
 }
 
