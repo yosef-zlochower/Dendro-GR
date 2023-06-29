@@ -156,6 +156,16 @@ namespace bssn
         }
     }
 
+
+    static inline double point_linf(const Point& p)
+    {
+      double lx = std::abs(p.x());
+      double ly = std::abs(p.y());
+      double lz = std::abs(p.z());
+      return std::max(std::max(lx, ly),lz);
+    } 
+
+
     bool isRemeshSinS(ot::Mesh* pMesh, const Point* bhLoc)
     {
         
@@ -205,12 +215,24 @@ namespace bssn
 			    
 			    d1 = bhLoc[0];
 			    d2 = bhLoc[1];    
-                
-                            const double rtemp = temp.abs();
-			    const double rp1 = (temp - d1).abs();
-			    const double rp2 = (temp - d2).abs();
+         
+                            double rp1, rp2;
+
+                            if(bssn::BSSN_BOX_TYPE==0)
+                            {       
+                                const double rtemp = temp.abs();
+			        rp1 = (temp - d1).abs();
+			        rp2 = (temp - d2).abs();
+	 	            } else if(bssn::BSSN_BOX_TYPE==1) 
+                            {
+                                const double rtemp = point_linf(temp);
+                                rp1 = point_linf(temp - d1);
+                                rp2 = point_linf(temp - d2);
+                            } else 
+                            {
+                                fprintf(stderr, "Set box type to 0 (sphere) or 1 (cube).\n");
+                            }
 		            const double minr = std::min({rp1, rp2});  
-	 	    
 		            if(rd1 > minr)
                             {
                                 rd1 = minr;

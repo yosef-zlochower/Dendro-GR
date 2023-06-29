@@ -338,6 +338,9 @@ namespace bssn
     /***@brief: box radii*/
     extern double BSSN_BOX_RADII[BSSN_BOX_MAX_RADII];
 
+    /***@brief: box shape*/
+    extern unsigned int BSSN_BOX_TYPE;
+
     // note ko derivs are not included
     #ifdef BSSN_USE_ADVECTIVE_DERIVS
         const unsigned int BSSN_NUM_DERIVS= 138 + 74;

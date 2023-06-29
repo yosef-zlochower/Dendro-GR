@@ -161,6 +161,7 @@ namespace bssn
 
     unsigned int BSSN_BOX_LEVELS;
     double BSSN_BOX_RADII[BSSN_BOX_MAX_RADII];
+    unsigned int BSSN_BOX_TYPE;
 
 }
 
