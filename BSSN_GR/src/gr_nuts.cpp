@@ -41,6 +41,7 @@ int main (int argc, char** argv)
     MPI_Comm_rank(comm,&rank);
     MPI_Comm_size(comm,&npes);
 
+    const double start_time = MPI_Wtime();
     // Print out CMAKE options
     if (!rank) {
         #ifdef BSSN_COMPUTE_CONSTRAINTS
@@ -222,6 +223,7 @@ int main (int argc, char** argv)
       #endif
       bool is_merge_executed = false;
       double t1 = MPI_Wtime();
+      bool already_checkpointed_in_this_it = false;
       while(ets->curr_time() < bssn::BSSN_RK_TIME_END)
       {
         const DendroIntL   step = ets->curr_step();
@@ -245,6 +247,7 @@ int main (int argc, char** argv)
 
         if( (step % bssn::BSSN_REMESH_TEST_FREQ) == 0 )
         {
+            already_checkpointed_in_this_it = false;
             bool isRemesh = bssnCtx->is_remesh();
             if(isRemesh)
             {
@@ -281,9 +284,32 @@ int main (int argc, char** argv)
         }
         
         if( (step % bssn::BSSN_CHECKPT_FREQ) == 0 )
+        {
           bssnCtx->write_checkpt();
+          already_checkpointed_in_this_it = true;
+        }
         
         ets->evolve();
+
+        const double current_time = MPI_Wtime();
+        bool terminate_now = false;
+        if (! ets->get_global_rank())
+        {
+          if (current_time - start_time > 2*60)
+          {
+            terminate_now = true;
+          }
+        }
+        par::Mpi_Bcast(&terminate_now,1,0,ets->get_global_comm());
+        if (terminate_now)
+        {
+          break;
+        }
+      }
+
+      if (already_checkpointed_in_this_it == false)
+      {
+        bssnCtx->write_checkpt();
       }
 
       #if defined __PROFILE_CTX__ && defined __PROFILE_ETS__
