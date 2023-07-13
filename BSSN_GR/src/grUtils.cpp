@@ -235,6 +235,7 @@ namespace bssn
 
             bssn::BSSN_BOX_LEVELS=parFile["BSSN_BOX_LEVELS"];
             bssn::BSSN_BOX_TYPE=parFile["BSSN_BOX_TYPE"];
+            bssn::WALL_TIME=parFile["WALL_TIME"];
 
             for(unsigned int i=0;i<bssn::BSSN_BOX_LEVELS;i++)
                 bssn::BSSN_BOX_RADII[i]=parFile["BSSN_BOX_RADII"][i];
@@ -472,6 +473,7 @@ namespace bssn
         par::Mpi_Bcast(&bssn::BSSN_BOX_LEVELS,1,0,comm);
         par::Mpi_Bcast(bssn::BSSN_BOX_RADII,bssn::BSSN_BOX_MAX_RADII,0,comm);
         par::Mpi_Bcast(&bssn::BSSN_BOX_TYPE,1,0,comm);
+        par::Mpi_Bcast(&bssn::WALL_TIME,1,0,comm);
 
     }
 

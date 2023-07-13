@@ -295,7 +295,7 @@ int main (int argc, char** argv)
         bool terminate_now = false;
         if (! ets->get_global_rank())
         {
-          if (current_time - start_time > 2*60)
+          if (current_time - start_time > WALL_TIME)
           {
             terminate_now = true;
           }

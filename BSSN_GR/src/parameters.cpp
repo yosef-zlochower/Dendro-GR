@@ -159,6 +159,7 @@ namespace bssn
     /***@brief: derivs workspace*/
     double* BSSN_DERIV_WORKSPACE=nullptr;
 
+    double WALL_TIME = 1.0e300;
     unsigned int BSSN_BOX_LEVELS;
     double BSSN_BOX_RADII[BSSN_BOX_MAX_RADII];
     unsigned int BSSN_BOX_TYPE;
