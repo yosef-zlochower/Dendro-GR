@@ -1109,7 +1109,10 @@ bool BSSNCtx::is_remesh() {
         isRefine = (isR1 || isR2);
     } else if (bssn::BSSN_REFINEMENT_MODE == bssn::RefinementMode::BH_LOC) {
         isRefine = bssn::isRemeshBH(m_uiMesh, m_uiBHLoc);
-    }
+    } else if (bssn::BSSN_REFINEMENT_MODE ==  
+             bssn::RefinementMode::SPHERE_IN_SPHERE) {
+         isRefine = bssn::isRemeshSinS(m_uiMesh, m_uiBHLoc);                  
+    } 
 
     return isRefine;
 }
