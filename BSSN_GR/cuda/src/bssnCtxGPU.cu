@@ -81,7 +81,7 @@ namespace bssn
 
         ot::dealloc_mpi_ctx<DendroScalar>(m_uiMesh, m_mpi_ctx, BSSN_NUM_VARS, BSSN_ASYNC_COMM_K);
         device::dealloc_mpi_ctx<DendroScalar>(m_uiMesh, m_mpi_ctx_device, BSSN_NUM_VARS , BSSN_ASYNC_COMM_K);
-        
+        m_mesh_cpu.dealloc_mesh_on_device(m_dptr_mesh);
         return;
     }
 
@@ -197,8 +197,12 @@ namespace bssn
             this->unzip(m_evar,m_evar_unz,bssn::BSSN_ASYNC_COMM_K);
             m_evar_unz.to_2d(unzipVar);
             //isRefine=this->is_remesh();
-            // enforce WMAR refinement based refinement initially. 
-            isRefine = bssn::isReMeshWAMR(m_uiMesh,(const double **)unzipVar,refineVarIds,bssn::BSSN_NUM_REFINE_VARS,waveletTolFunc,bssn::BSSN_DENDRO_AMR_FAC);
+            // enforce WMAR refinement based refinement initially.
+            if(max_iter==0)
+                isRefine = false;
+            else
+                isRefine = bssn::isReMeshWAMR(m_uiMesh,(const double **)unzipVar,refineVarIds,bssn::BSSN_NUM_REFINE_VARS,waveletTolFunc,bssn::BSSN_DENDRO_AMR_FAC);
+            
             if(isRefine)
             {
                 ot::Mesh* newMesh = this->remesh(bssn::BSSN_DENDRO_GRAIN_SZ, bssn::BSSN_LOAD_IMB_TOL,bssn::BSSN_SPLIT_FIX);
@@ -327,20 +331,10 @@ namespace bssn
                                 TwoPunctures((double)xx,(double)yy,(double)zz,var,
                                             &mp, &mm, &mp_adm, &mm_adm, &E, &J1, &J2, &J3);
                             }
-                            else if (bssn::BSSN_ID_TYPE == 1) {
-                                bssn::punctureData((double)x,(double)y,(double)z,var);
-                            }
-                            else if (bssn::BSSN_ID_TYPE == 2) {
-                                bssn::KerrSchildData((double)x,(double)y,(double)z,var);
-                            }
-                            else if (bssn::BSSN_ID_TYPE == 3) {
-                                bssn::noiseData((double)x,(double)y,(double)z,var);
-                            }
-                            else if (bssn::BSSN_ID_TYPE == 4) {
-                                bssn::fake_initial_data((double)x,(double)y,(double)z,var);
-                            }
                             else {
-                                std::cout<<"Unknown ID type"<<std::endl;
+                                // all other values are handled in the initial data wrapper including
+                                // an error message
+                                initialDataFunctionWrapper((double)x, (double)y, (double)z, var);
                             }
                             for(unsigned int v=0; v<bssn::BSSN_NUM_VARS; v++)
                                 zipIn[v][nodeLookUp_CG]=var[v];
