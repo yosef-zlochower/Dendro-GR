@@ -224,6 +224,14 @@ int main (int argc, char** argv)
       bool is_merge_executed = false;
       double t1 = MPI_Wtime();
       bool already_checkpointed_in_this_it = false;
+
+      {
+        FILE * f = fopen("start.at_now", "w");
+        fprintf(f, "started\n");
+        fclose(f);
+      }
+      const double init_done_time  = MPI_Wtime();
+
       while(ets->curr_time() < bssn::BSSN_RK_TIME_END)
       {
         const DendroIntL   step = ets->curr_step();
@@ -306,6 +314,14 @@ int main (int argc, char** argv)
           break;
         }
       }
+
+      if(!(ets->get_global_rank()))
+      {
+        const double current_time = MPI_Wtime();
+        std::cout<<" ETS total evolution time (hours) : "<< (current_time - init_done_time)/3600 << std::endl;
+        std::cout<<" ETS run speed (M / hour) : "<< ets->curr_time() / (current_time - init_done_time) * 3600 << std::endl;
+      }
+      
 
       if (already_checkpointed_in_this_it == false)
       {
