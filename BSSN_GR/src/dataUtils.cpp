@@ -183,6 +183,8 @@ namespace bssn
         // const double refinement_radii[] = {220, 110, 55 ,25, 10, 5 ,2, 1,0};
         // const int num_radii = sizeof(refinement_radii) / sizeof(double);
         
+        const double * bssn_box_radii_at[] = {bssn::BSSN_BOX_RADII_1, bssn::BSSN_BOX_RADII_2};
+
         std::vector<unsigned int> refine_flags;
         if(pMesh->isActive())
         {
@@ -198,8 +200,8 @@ namespace bssn
             {
                 const unsigned int ln = 1u<<(m_uiMaxDepth-pNodes[ele].getLevel());
 		            double rd1 = 1e100;
-
-
+                unsigned int punct_id = 0;
+ 
                 for(unsigned int kk=0; kk < 2; kk++)
                 {
                     for(unsigned int jj=0; jj < 2; jj++)
@@ -236,14 +238,15 @@ namespace bssn
 		            if(rd1 > minr)
                             {
                                 rd1 = minr;
+                                punct_id = minr == rp1 ? 0 :1;
                             }
                         }
                     }
                 }
 
-                for (int level = 0; level < bssn::BSSN_BOX_LEVELS; level ++)
+                for (int level = 0; level < bssn::BSSN_BOX_NUM_LEVELS[punct_id]; level ++)
                 {
-                  if (rd1 >= bssn::BSSN_BOX_RADII[level])
+                  if (rd1 >= bssn_box_radii_at[punct_id][level])
                   {
                     if ( ( pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1) > bssn::BSSN_MINDEPTH + level )
                     {

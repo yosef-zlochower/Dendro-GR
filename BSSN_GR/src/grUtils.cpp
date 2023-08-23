@@ -233,12 +233,17 @@ namespace bssn
             prf_len=BSSN_PROFILE_FILE_PREFIX.size();
             tpf_len=TPID::FILE_PREFIX.size();
 
-            bssn::BSSN_BOX_LEVELS=parFile["BSSN_BOX_LEVELS"];
+            for(unsigned int i=0;i<2;i++)
+                bssn::BSSN_BOX_NUM_LEVELS[i]=parFile["BSSN_BOX_NUM_LEVELS"][i];
+
             bssn::BSSN_BOX_TYPE=parFile["BSSN_BOX_TYPE"];
             bssn::WALL_TIME=parFile["WALL_TIME"];
 
-            for(unsigned int i=0;i<bssn::BSSN_BOX_LEVELS;i++)
-                bssn::BSSN_BOX_RADII[i]=parFile["BSSN_BOX_RADII"][i];
+            for(unsigned int i=0;i<bssn::BSSN_BOX_NUM_LEVELS[0];i++)
+                bssn::BSSN_BOX_RADII_1[i]=parFile["BSSN_BOX_RADII_1"][i];
+
+            for(unsigned int i=0;i<bssn::BSSN_BOX_NUM_LEVELS[1];i++)
+                bssn::BSSN_BOX_RADII_2[i]=parFile["BSSN_BOX_RADII_2"][i];
 
             GW::BSSN_GW_NUM_RADAII=parFile["BSSN_GW_NUM_RADAII"];
             GW::BSSN_GW_NUM_LMODES=parFile["BSSN_GW_NUM_LMODES"];
@@ -470,8 +475,9 @@ namespace bssn
         bssn::BSSN_BH1_MASS=BH1.getBHMass();
         bssn::BSSN_BH2_MASS=BH2.getBHMass();
 
-        par::Mpi_Bcast(&bssn::BSSN_BOX_LEVELS,1,0,comm);
-        par::Mpi_Bcast(bssn::BSSN_BOX_RADII,bssn::BSSN_BOX_MAX_RADII,0,comm);
+        par::Mpi_Bcast(bssn::BSSN_BOX_NUM_LEVELS,2,0,comm);
+        par::Mpi_Bcast(bssn::BSSN_BOX_RADII_1,bssn::BSSN_BOX_MAX_RADII,0,comm);
+        par::Mpi_Bcast(bssn::BSSN_BOX_RADII_2,bssn::BSSN_BOX_MAX_RADII,0,comm);
         par::Mpi_Bcast(&bssn::BSSN_BOX_TYPE,1,0,comm);
         par::Mpi_Bcast(&bssn::WALL_TIME,1,0,comm);
 
