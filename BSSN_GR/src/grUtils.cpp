@@ -233,17 +233,42 @@ namespace bssn
             prf_len=BSSN_PROFILE_FILE_PREFIX.size();
             tpf_len=TPID::FILE_PREFIX.size();
 
-            for(unsigned int i=0;i<2;i++)
-                bssn::BSSN_BOX_NUM_LEVELS[i]=parFile["BSSN_BOX_NUM_LEVELS"][i];
+            if (parFile.find("BSSN_BOX_NUM_LEVELS") != parFile.end()) {
+              for(unsigned int i=0;i<2;i++)
+                  bssn::BSSN_BOX_NUM_LEVELS[i]=parFile["BSSN_BOX_NUM_LEVELS"][i];
+            }
+            else if (bssn::BSSN_REFINEMENT_MODE == SPHERE_IN_SPHERE)
+            {
+              fprintf(stderr, "You must specify BSSN_BOX_NUL_LEVELS\n");
+              exit(-1);
+            }
 
-            bssn::BSSN_BOX_TYPE=parFile["BSSN_BOX_TYPE"];
-            bssn::WALL_TIME=parFile["WALL_TIME"];
+            if (parFile.find("BSSN_BOX_TYPE") != parFile.end()) {
+                bssn::BSSN_BOX_TYPE=parFile["BSSN_BOX_TYPE"];
+            }
+            if (parFile.find("WALL_TIME") != parFile.end()) {
+              bssn::WALL_TIME=parFile["WALL_TIME"];
+            }
 
-            for(unsigned int i=0;i<bssn::BSSN_BOX_NUM_LEVELS[0];i++)
-                bssn::BSSN_BOX_RADII_1[i]=parFile["BSSN_BOX_RADII_1"][i];
+            if (parFile.find("BSSN_BOX_RADII_1") != parFile.end()) {
+                for(unsigned int i=0;i<bssn::BSSN_BOX_NUM_LEVELS[0];i++)
+                    bssn::BSSN_BOX_RADII_1[i]=parFile["BSSN_BOX_RADII_1"][i];
+            }
+            else if (bssn::BSSN_REFINEMENT_MODE == SPHERE_IN_SPHERE)
+            {
+              fprintf(stderr, "You must specify BSSN_BOX_RADII_1\n");
+              exit(-1);
+            }
 
-            for(unsigned int i=0;i<bssn::BSSN_BOX_NUM_LEVELS[1];i++)
-                bssn::BSSN_BOX_RADII_2[i]=parFile["BSSN_BOX_RADII_2"][i];
+            if (parFile.find("BSSN_BOX_RADII_2") != parFile.end()) {
+                for(unsigned int i=0;i<bssn::BSSN_BOX_NUM_LEVELS[1];i++)
+                    bssn::BSSN_BOX_RADII_1[i]=parFile["BSSN_BOX_RADII_2"][i];
+            }
+            else if (bssn::BSSN_REFINEMENT_MODE == SPHERE_IN_SPHERE)
+            {
+              fprintf(stderr, "You must specify BSSN_BOX_RADII_2\n");
+              exit(-1);
+            }
 
             GW::BSSN_GW_NUM_RADAII=parFile["BSSN_GW_NUM_RADAII"];
             GW::BSSN_GW_NUM_LMODES=parFile["BSSN_GW_NUM_LMODES"];
