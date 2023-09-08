@@ -239,7 +239,7 @@ namespace bssn
             }
             else if (bssn::BSSN_REFINEMENT_MODE == SPHERE_IN_SPHERE)
             {
-              fprintf(stderr, "You must specify BSSN_BOX_NUL_LEVELS\n");
+              fprintf(stderr, "You must specify BSSN_BOX_NUM_LEVELS\n");
               exit(-1);
             }
 
@@ -262,7 +262,7 @@ namespace bssn
 
             if (parFile.find("BSSN_BOX_RADII_2") != parFile.end()) {
                 for(unsigned int i=0;i<bssn::BSSN_BOX_NUM_LEVELS[1];i++)
-                    bssn::BSSN_BOX_RADII_1[i]=parFile["BSSN_BOX_RADII_2"][i];
+                    bssn::BSSN_BOX_RADII_2[i]=parFile["BSSN_BOX_RADII_2"][i];
             }
             else if (bssn::BSSN_REFINEMENT_MODE == SPHERE_IN_SPHERE)
             {
