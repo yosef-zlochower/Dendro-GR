@@ -193,6 +193,10 @@ namespace bssn
             //     std::cout<<"bh distance: "<<dBH<<std::endl;
 
             const ot::TreeNode * pNodes = pMesh->getAllElements().data();
+            const unsigned int order = pMesh->getElementOrder();
+            const unsigned int order_offset = order / 2;
+
+            printf("order = %u\n",  order);
             refine_flags.resize(pMesh->getNumLocalMeshElements(),OCT_NO_CHANGE);
 
             // refine pass. 
@@ -201,16 +205,17 @@ namespace bssn
                 const unsigned int ln = 1u<<(m_uiMaxDepth-pNodes[ele].getLevel());
 		            double rd1 = 1e100;
                 unsigned int punct_id = 0;
- 
-                for(unsigned int kk=0; kk < 2; kk++)
+                /* to do: replace 2 with element order + 1 */
+                 
+                for(unsigned int kk=0; kk < 1; kk++)
                 {
-                    for(unsigned int jj=0; jj < 2; jj++)
+                    for(unsigned int jj=0; jj < 1; jj++)
                     {
-                        for(unsigned int ii=0; ii < 2; ii++)
+                        for(unsigned int ii=0; ii < 1; ii++)
                         {
-                            const double x = pNodes[ele].minX() + ii * ln;
-                            const double y = pNodes[ele].minY() + jj * ln;
-                            const double z = pNodes[ele].minZ() + kk * ln;
+                            const double x = pNodes[ele].minX() + (ii + order_offset) * ln;
+                            const double y = pNodes[ele].minY() + (jj + order_offset) * ln;
+                            const double z = pNodes[ele].minZ() + (kk + order_offset) * ln;
                             const Point oct_mid = Point(x,y,z);
                             Point d1, d2, temp;
                             pMesh->octCoordToDomainCoord(oct_mid,temp);
