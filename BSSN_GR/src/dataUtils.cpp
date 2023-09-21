@@ -165,6 +165,44 @@ namespace bssn
       return std::max(std::max(lx, ly),lz);
     } 
 
+    static inline double min_distance_cell_to_point_1D(const double xmin, const double xmax, const double x)
+    {
+      double lx = 0;
+      // x term
+      if (xmin <= x && x<= xmax)
+      {
+        lx = 0;
+      }
+      else if (x <= xmin)
+      {
+        lx = xmin - x;
+      }
+      else
+      {
+        lx = x - xmax;
+      }
+
+      return lx;
+    }
+
+    static inline double min_distance_cell_to_point(const Point& p_min, const Point& p_max, const Point&p)
+    {
+      const double lx = min_distance_cell_to_point_1D(p_min.x(), p_max.x(), p.x());
+      const double ly = min_distance_cell_to_point_1D(p_min.y(), p_max.y(), p.y());
+      const double lz = min_distance_cell_to_point_1D(p_min.z(), p_max.z(), p.z());
+      if(bssn::BSSN_BOX_TYPE==0)
+      {       
+        return sqrt(lx * lx + ly * ly + lz * lz);
+      }
+      else
+      {
+        return  std::max(std::max(lx, ly),lz);
+      }
+  
+
+    } 
+
+
 
     bool isRemeshSinS(ot::Mesh* pMesh, const Point* bhLoc)
     {
@@ -194,64 +232,50 @@ namespace bssn
 
             const ot::TreeNode * pNodes = pMesh->getAllElements().data();
             const unsigned int order = pMesh->getElementOrder();
-            const unsigned int order_offset = order / 2;
 
-            printf("order = %u\n",  order);
             refine_flags.resize(pMesh->getNumLocalMeshElements(),OCT_NO_CHANGE);
 
             // refine pass. 
             for(unsigned int ele = eleLocalBegin; ele< eleLocalEnd; ele++)
             {
                 const unsigned int ln = 1u<<(m_uiMaxDepth-pNodes[ele].getLevel());
-		            double rd1 = 1e100;
                 unsigned int punct_id = 0;
-                /* to do: replace 2 with element order + 1 */
                  
-                for(unsigned int kk=0; kk < 1; kk++)
-                {
-                    for(unsigned int jj=0; jj < 1; jj++)
-                    {
-                        for(unsigned int ii=0; ii < 1; ii++)
-                        {
-                            const double x = pNodes[ele].minX() + (ii + order_offset) * ln;
-                            const double y = pNodes[ele].minY() + (jj + order_offset) * ln;
-                            const double z = pNodes[ele].minZ() + (kk + order_offset) * ln;
-                            const Point oct_mid = Point(x,y,z);
-                            Point d1, d2, temp;
-                            pMesh->octCoordToDomainCoord(oct_mid,temp);
-			    
-			    d1 = bhLoc[0];
-			    d2 = bhLoc[1];    
-         
-                            double rp1, rp2;
 
-                            if(bssn::BSSN_BOX_TYPE==0)
-                            {       
-                                const double rtemp = temp.abs();
-			        rp1 = (temp - d1).abs();
-			        rp2 = (temp - d2).abs();
-	 	            } else if(bssn::BSSN_BOX_TYPE==1) 
-                            {
-                                const double rtemp = point_linf(temp);
-                                rp1 = point_linf(temp - d1);
-                                rp2 = point_linf(temp - d2);
-                            } else 
-                            {
-                                fprintf(stderr, "Set box type to 0 (sphere) or 1 (cube).\n");
-                            }
-		            const double minr = std::min({rp1, rp2});  
-		            if(rd1 > minr)
-                            {
-                                rd1 = minr;
-                                punct_id = minr == rp1 ? 0 :1;
-                            }
-                        }
-                    }
+                const double x_min = pNodes[ele].minX();
+                const double y_min = pNodes[ele].minY();
+                const double z_min = pNodes[ele].minZ();
+
+                const double x_max = pNodes[ele].minX() + ln;
+                const double y_max = pNodes[ele].minY() + ln;
+                const double z_max = pNodes[ele].minZ() + ln;
+                const Point oct_min = Point(x_min,y_min,z_min);
+                const Point oct_max = Point(x_max,y_max,z_max);
+                Point coord_min;
+                Point coord_max;
+                pMesh->octCoordToDomainCoord(oct_min,coord_min);
+                pMesh->octCoordToDomainCoord(oct_max,coord_max);
+                Point d1, d2;
+
+                d1 = bhLoc[0];
+                d2 = bhLoc[1];    
+         
+                const double rp1 = min_distance_cell_to_point(coord_min, coord_max, d1);
+                const double rp2 = min_distance_cell_to_point(coord_min, coord_max, d2);
+
+                if (rp1 < rp2)
+                {
+                    punct_id = 0;
                 }
+                else
+                {
+                    punct_id = 1;
+                }
+                const double rp = std::min(rp1, rp2);
 
                 for (int level = 0; level < bssn::BSSN_BOX_NUM_LEVELS[punct_id]; level ++)
                 {
-                  if (rd1 >= bssn_box_radii_at[punct_id][level])
+                  if (rp >= bssn_box_radii_at[punct_id][level])
                   {
                     if ( ( pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1) > bssn::BSSN_MINDEPTH + level )
                     {
