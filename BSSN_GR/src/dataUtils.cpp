@@ -207,16 +207,10 @@ namespace bssn
     bool isRemeshSinS(ot::Mesh* pMesh, const Point* bhLoc)
     {
         
-        const double r_near[2] = {bssn::BSSN_BH1_AMR_R,bssn::BSSN_BH2_AMR_R};
-        const double r_far[2]  =  {2.5 * r_near[0], 2.5 * r_near[1] };
-        const unsigned int DEPTH_LEV_OFFSET = 2;
-
         const unsigned int eleLocalBegin = pMesh->getElementLocalBegin();
         const unsigned int eleLocalEnd = pMesh->getElementLocalEnd();
         bool isOctChange=false;
         bool isOctChange_g =false;
-        const double dBH=(bhLoc[0]-bhLoc[1]).abs();
-        const unsigned int refLevMin = std::min(bssn::BSSN_BH1_MAX_LEV,bssn::BSSN_BH2_MAX_LEV);
         
         // const double refinement_radii[] = {220, 110, 55 ,25, 10, 5 ,2, 1,0};
         // const int num_radii = sizeof(refinement_radii) / sizeof(double);
@@ -231,7 +225,6 @@ namespace bssn
             //     std::cout<<"bh distance: "<<dBH<<std::endl;
 
             const ot::TreeNode * pNodes = pMesh->getAllElements().data();
-            const unsigned int order = pMesh->getElementOrder();
 
             refine_flags.resize(pMesh->getNumLocalMeshElements(),OCT_NO_CHANGE);
 
@@ -255,13 +248,9 @@ namespace bssn
                 Point coord_max;
                 pMesh->octCoordToDomainCoord(oct_min,coord_min);
                 pMesh->octCoordToDomainCoord(oct_max,coord_max);
-                Point d1, d2;
-
-                d1 = bhLoc[0];
-                d2 = bhLoc[1];    
          
-                const double rp1 = min_distance_cell_to_point(coord_min, coord_max, d1);
-                const double rp2 = min_distance_cell_to_point(coord_min, coord_max, d2);
+                const double rp1 = min_distance_cell_to_point(coord_min, coord_max, bhLoc[0]);
+                const double rp2 = min_distance_cell_to_point(coord_min, coord_max, bhLoc[1]);
 
                 if (rp1 < rp2)
                 {
@@ -1072,7 +1061,6 @@ namespace bssn
 
                         }else
                         {
-                            assert(bssn::BSSN_BH2_MAX_LEV==refLevMin);
                             for(unsigned int rs=1; rs<NUM_REFINE_SPHERES + 1; rs++)
                             {
                                 if( (rd2> bh2_amr_r[rs-1])  && (rd2 <= bh2_amr_r[rs]) )
