@@ -17,13 +17,18 @@
 #include "rkBSSN.h"
 #include "sdc.h"
 #include "bssnCtx.h"
-
-
+#include <stdio.h>
+#include <time.h>
+void printtime(void){
+          time_t t = time(0);
+          struct tm tm = *localtime(&t);
+          printf("now: \n%d-%02d-%02d %02d:%02d:%02d\n", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+}
 int main (int argc, char** argv)
 {
     // 0- NUTS 1-UTS
     unsigned int ts_mode=0;     
-    
+
     if(argc<2)
     {
         std::cout<<"Usage: "<<argv[0]<<"paramFile TSMode(0){0-Spatially Adaptive Time Stepping(SATS, "<<GRN<<"default"<<NRM<<") , 1- Uniform Time Stepping.  }"<<std::endl;
@@ -282,13 +287,13 @@ int main (int argc, char** argv)
 
         if((step % bssn::BSSN_GW_EXTRACT_FREQ) == 0 )
         {
-          if(!rank_global)
+          if(!rank_global){
             std::cout<<"[ETS] : Executing step :  "<<ets->curr_step()<<"\tcurrent time :"<<ets->curr_time()<<"\t dt:"<<ets->ts_size()<<"\t"<<std::endl;
-          
+	    printtime();
+	  }
           bssnCtx->terminal_output();  
           bssnCtx->write_vtu();
           bssnCtx->evolve_bh_loc(bssnCtx->get_evolution_vars(),ets->ts_size()*bssn::BSSN_GW_EXTRACT_FREQ);
-
         }
         
         if( (step % bssn::BSSN_CHECKPT_FREQ) == 0 )
