@@ -18,7 +18,6 @@
 #include "sdc.h"
 #include "bssnCtx.h"
 
-
 int main (int argc, char** argv)
 {
     // 0- NUTS 1-UTS
@@ -103,6 +102,9 @@ int main (int argc, char** argv)
         #endif
 
     }
+
+    std::vector<std::string> arg_s(argv, argv+argc);
+    bssn:printGitInformation(rank, arg_s);
 
     //1 . read the parameter file.
     if(!rank) std::cout<<" reading parameter file :"<<argv[1]<<std::endl;
