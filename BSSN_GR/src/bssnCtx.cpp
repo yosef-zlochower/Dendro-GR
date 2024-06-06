@@ -1102,7 +1102,9 @@ bool BSSNCtx::is_remesh() {
     } else if (bssn::BSSN_REFINEMENT_MODE ==  
              bssn::RefinementMode::SPHERE_IN_SPHERE) {
          isRefine = bssn::isRemeshSinS(m_uiMesh, m_uiBHLoc);                  
-    } 
+    } else if (bssn::BSSN_REFINEMENT_MODE == bssn::RefinementMode::SIS_OUT_WAMR_IN) {
+         isRefine = RefinementMode::isRemeshSiSoutWAMRin(ot::Mesh* pMesh, const Point* bhLoc, const double **unzippedVec,const unsigned int * varIds,const unsigned int numVars,std::function<double(double,double,double,double*)>wavelet_tol,double amr_coarse_fac)
+    }
 
     return isRefine;
 }

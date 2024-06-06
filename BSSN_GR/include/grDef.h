@@ -44,7 +44,7 @@ namespace bssn
      * EH_WAMR: both even horizon as well as WAMR based refinement. 
      * BH_LOC BH location based refinement, if turned on track the bh locations. 
      */
-    enum RefinementMode{WAMR=0, EH, EH_WAMR, BH_LOC, SPHERE_IN_SPHERE};
+    enum RefinementMode{WAMR=0, EH, EH_WAMR, BH_LOC, SPHERE_IN_SPHERE, SIS_OUT_WAMR_IN};
 
 
 

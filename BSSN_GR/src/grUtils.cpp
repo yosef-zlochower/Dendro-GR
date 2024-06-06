@@ -264,6 +264,19 @@ namespace bssn
                 for(unsigned int i=0;i<bssn::BSSN_BOX_NUM_LEVELS[1];i++)
                     bssn::BSSN_BOX_RADII_2[i]=parFile["BSSN_BOX_RADII_2"][i];
             }
+            if (parFile.find("BSSN_BOX_OUTER_NUM_LEVELS") != parFile.end()) {
+                bssn::BSSN_BOX_OUTER_NUM_LEVELS=parFile[BSSN_BOX_OUTER_NUM_LEVELS];
+            }
+            if (parFile.find("BSSN_BOX_OUTER_RADII") != parFile.end()) {
+               for(unsigned int i=0;i<bssn::BSSN_BOX_OUTER_NUM_LEVELS;i++)
+                    bssn::BSSN_BOX_OUTER_RADII[i]=parFile["BSSN_BOX_OUTER_RADII"][i];
+            }
+            if (parFile.find("BSSN_SIS_MAXDEPTH") != parFile.end()) {
+                bssn::BSSN_SIS_MAXDEPTH=parFile[BSSN_SIS_MAXDEPTH];
+            } 
+            if (parFile.find("BSSN_SIS_MINDEPTH") != parFile.end()) {
+                bssn::BSSN_SIS_MINDEPTH=parFile[BSSN_SIS_MINDEPTH];
+            }
             else if (bssn::BSSN_REFINEMENT_MODE == SPHERE_IN_SPHERE)
             {
               fprintf(stderr, "You must specify BSSN_BOX_RADII_2\n");

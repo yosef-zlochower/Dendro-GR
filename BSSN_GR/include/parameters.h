@@ -235,6 +235,12 @@ namespace bssn
     /**@brief: max refinement level*/
     extern unsigned int BSSN_MAXDEPTH;
 
+    /**@brief: minimum refinement level for outer SiS region*/
+    extern unsigned int BSSN_SIS_MINDEPTH;
+
+    /**@brief: maximum refinement level for outer SiS region*/
+    extern unsigned int BSSN_SIS_MAXDEPTH;
+
     /**@brief: lambda values for evolution */
     extern unsigned int BSSN_LAMBDA[4];
 
@@ -335,11 +341,17 @@ namespace bssn
     /***@brief: number of box levels for BH1 and BH2 respectively*/
     extern unsigned int BSSN_BOX_NUM_LEVELS[2];
 
+    /***@brief: number of box levels for outer SiS region*/
+    extern unsigned int BSSN_BOX_OUTER_NUM_LEVELS;
+
     /***@brief: box radii for BH1*/
     extern double BSSN_BOX_RADII_1[BSSN_BOX_MAX_RADII];
 
     /***@brief: box radii for BH2*/
     extern double BSSN_BOX_RADII_2[BSSN_BOX_MAX_RADII];
+
+    /***@brief: box radii for outer SiS region*/
+    extern double BSSN_BOX_OUTER_RADII[BSSN_BOX_MAX_RADII];
 
     /***@brief: box shape*/
     extern unsigned int BSSN_BOX_TYPE;
