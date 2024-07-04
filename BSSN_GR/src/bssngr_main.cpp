@@ -252,6 +252,9 @@ int main (int argc, char** argv)
         fclose(f);
       }
       const double init_done_time  = MPI_Wtime();
+      double wall_interval_start = init_done_time;
+      double sim_interval_start = ets->curr_time();
+      const double init_time = ets->curr_time();
 
       while(ets->curr_time() < bssn::BSSN_RK_TIME_END)
       {
@@ -334,13 +337,23 @@ int main (int argc, char** argv)
         {
           break;
         }
+        if( (step % bssn::BSSN_REMESH_TEST_FREQ) == 0 )
+	{
+	  const double current_wall_time = MPI_Wtime();
+          if(!(ets->get_global_rank()))
+          {
+            std::cout<<"current simulation time and run speed (M / hour) : "<< ets->curr_time()<<" "<<(ets->curr_time() - sim_interval_start) / (current_wall_time - wall_interval_start) * 3600 << std::endl;
+          }
+	  wall_interval_start = current_wall_time;
+	  sim_interval_start = ets->curr_time();
+	}	
       }
 
       if(!(ets->get_global_rank()))
       {
         const double current_time = MPI_Wtime();
         std::cout<<" ETS total evolution time (hours) : "<< (current_time - init_done_time)/3600 << std::endl;
-        std::cout<<" ETS run speed (M / hour) : "<< ets->curr_time() / (current_time - init_done_time) * 3600 << std::endl;
+        std::cout<<" ETS average run speed (M / hour) : "<< (ets->curr_time() - init_time) / (current_time - init_done_time) * 3600 << std::endl;
       }
       
 
