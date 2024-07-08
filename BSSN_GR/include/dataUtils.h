@@ -51,7 +51,9 @@ namespace bssn
      */
     bool isRemeshBH(ot::Mesh* pMesh, const Point* bhLoc);
     bool isRemeshSinS(ot::Mesh* pMesh, const Point* bhLoc);
-    bool isRemeshSiSoutWAMRin(ot::Mesh* pMesh, const Point* bhLoc, const double **unzippedVec,const unsigned int * varIds,const unsigned int numVars,std::function<double(double,double,double,double*)>wavelet_tol,double amr_coarse_fac);
+    bool isRemeshSiSCombination(ot::Mesh* pMesh, const Point* bhLoc, const double **unzippedVec,const unsigned int * varIds,const unsigned int numVars,std::function<double(double,double,double,double*)>wavelet_tol,double amr_coarse_fac);
+    std::vector<unsigned int> isRemeshSinSHelper(ot::Mesh* pMesh, const Point* bhLoc);
+    std::vector<unsigned int> isReMeshWAMRHelper(ot::Mesh* pMesh, const double **unzippedVec,const unsigned int * varIds,const unsigned int numVars,std::function<double(double,double,double,double*)>wavelet_tol,double amr_coarse_fac);
     /**
      * @brief refine only based on the alpha variable event horizon. 
      * 

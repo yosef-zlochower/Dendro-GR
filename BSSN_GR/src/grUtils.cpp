@@ -169,6 +169,9 @@ namespace bssn
             if(parFile.find("BSSN_MINDEPTH")!=parFile.end())
                 bssn::BSSN_MINDEPTH =parFile["BSSN_MINDEPTH"];
 
+            if(parFile.find("BSSN_MINDEPTH_SIS")!=parFile.end())
+                bssn::BSSN_MINDEPTH_SIS =parFile["BSSN_MINDEPTH_SIS"];
+  
             if(parFile.find("BSSN_BH1_CONSTRAINT_R")!=parFile.end())
                 bssn::BSSN_BH1_CONSTRAINT_R =parFile["BSSN_BH1_CONSTRAINT_R"];
 
@@ -232,13 +235,24 @@ namespace bssn
             chp_len=BSSN_CHKPT_FILE_PREFIX.size();
             prf_len=BSSN_PROFILE_FILE_PREFIX.size();
             tpf_len=TPID::FILE_PREFIX.size();
+            
+            if (parFile.find("BSSN_REFINEMENT_NUM_MODES") != parFile.end()) {
+                bssn::BSSN_REFINEMENT_NUM_MODES=parFile["BSSN_REFINEMENT_NUM_MODES"];
+            } 
+            if (parFile.find("BSSN_REFINEMENT_MODE_COMBINATION_ORDER") != parFile.end()) {
+              for(unsigned int i=0;i<2;i++)
+                  bssn::BSSN_REFINEMENT_MODE_COMBINATION_ORDER[i]=parFile["BSSN_REFINEMENT_MODE_COMBINATION_ORDER"][i];
+            }
+            else if (bssn::BSSN_REFINEMENT_MODE == SIS_OUT_WAMR_IN) {
+              fprintf(stderr, "You must specify the placements of refinement methods\n");
+              exit(-1);
+            }
 
             if (parFile.find("BSSN_BOX_NUM_LEVELS") != parFile.end()) {
               for(unsigned int i=0;i<2;i++)
                   bssn::BSSN_BOX_NUM_LEVELS[i]=parFile["BSSN_BOX_NUM_LEVELS"][i];
             }
-            else if (bssn::BSSN_REFINEMENT_MODE == SPHERE_IN_SPHERE)
-            {
+            else if (bssn::BSSN_REFINEMENT_MODE == SPHERE_IN_SPHERE) {
               fprintf(stderr, "You must specify BSSN_BOX_NUM_LEVELS\n");
               exit(-1);
             }
@@ -263,19 +277,6 @@ namespace bssn
             if (parFile.find("BSSN_BOX_RADII_2") != parFile.end()) {
                 for(unsigned int i=0;i<bssn::BSSN_BOX_NUM_LEVELS[1];i++)
                     bssn::BSSN_BOX_RADII_2[i]=parFile["BSSN_BOX_RADII_2"][i];
-            }
-            if (parFile.find("BSSN_BOX_OUTER_NUM_LEVELS") != parFile.end()) {
-                bssn::BSSN_BOX_OUTER_NUM_LEVELS=parFile[BSSN_BOX_OUTER_NUM_LEVELS];
-            }
-            if (parFile.find("BSSN_BOX_OUTER_RADII") != parFile.end()) {
-               for(unsigned int i=0;i<bssn::BSSN_BOX_OUTER_NUM_LEVELS;i++)
-                    bssn::BSSN_BOX_OUTER_RADII[i]=parFile["BSSN_BOX_OUTER_RADII"][i];
-            }
-            if (parFile.find("BSSN_SIS_MAXDEPTH") != parFile.end()) {
-                bssn::BSSN_SIS_MAXDEPTH=parFile[BSSN_SIS_MAXDEPTH];
-            } 
-            if (parFile.find("BSSN_SIS_MINDEPTH") != parFile.end()) {
-                bssn::BSSN_SIS_MINDEPTH=parFile[BSSN_SIS_MINDEPTH];
             }
             else if (bssn::BSSN_REFINEMENT_MODE == SPHERE_IN_SPHERE)
             {
@@ -397,6 +398,7 @@ namespace bssn
         par::Mpi_Bcast(&BSSN_DIM,1,0,comm);
         par::Mpi_Bcast(&BSSN_MAXDEPTH,1,0,comm);
         par::Mpi_Bcast(&BSSN_MINDEPTH,1,0,comm);
+        par::Mpi_Bcast(&BSSN_MINDEPTH_SIS,1,0,comm);
 
         MPI_Bcast(&(bssn::BH1),sizeof(double)*10,MPI_BYTE,0,comm);
         MPI_Bcast(&(bssn::BH2),sizeof(double)*10,MPI_BYTE,0,comm);
@@ -513,6 +515,8 @@ namespace bssn
         bssn::BSSN_BH1_MASS=BH1.getBHMass();
         bssn::BSSN_BH2_MASS=BH2.getBHMass();
 
+        par::Mpi_Bcast(&bssn::BSSN_REFINEMENT_NUM_MODES,1,0,comm);
+        par::Mpi_Bcast(bssn::BSSN_REFINEMENT_MODE_COMBINATION_ORDER,2,0,comm);
         par::Mpi_Bcast(bssn::BSSN_BOX_NUM_LEVELS,2,0,comm);
         par::Mpi_Bcast(bssn::BSSN_BOX_RADII_1,bssn::BSSN_BOX_MAX_RADII,0,comm);
         par::Mpi_Bcast(bssn::BSSN_BOX_RADII_2,bssn::BSSN_BOX_MAX_RADII,0,comm);
@@ -599,6 +603,7 @@ namespace bssn
             sout<<YLW<<"\tBSSN_DIM :"<<bssn::BSSN_DIM<<NRM<<std::endl;
             sout<<YLW<<"\tBSSN_MAXDEPTH :"<<bssn::BSSN_MAXDEPTH<<NRM<<std::endl;
             sout<<YLW<<"\tBSSN_MINDEPTH :"<<bssn::BSSN_MINDEPTH<<NRM<<std::endl;
+            sout<<YLW<<"\tBSSN_MINDEPTH_SIS :"<<bssn::BSSN_MINDEPTH_SIS<<NRM<<std::endl;
 
             sout<<YLW<<"\tBSSN_NUM_REFINE_VARS :"<<bssn::BSSN_NUM_REFINE_VARS<<NRM<<std::endl;
             sout<<YLW<<"\tBSSN_REFINE_VARIABLE_INDICES :[";

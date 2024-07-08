@@ -3,6 +3,7 @@
 //
 
 #include "dataUtils.h"
+#define OCT_IGNORE 10u
 
 namespace bssn
 {
@@ -202,37 +203,55 @@ namespace bssn
 
     } 
 
-    bool isRemeshSiSoutWAMRin(ot::Mesh* pMesh, const Point* bhLoc, const double **unzippedVec,const unsigned int * varIds,const unsigned int numVars,std::function<double(double,double,double,double*)>wavelet_tol,double amr_coarse_fac)
+    bool isRemeshSiSCombination(ot::Mesh* pMesh, const Point* bhLoc, const double **unzippedVec, const unsigned int * varIds, const unsigned int numVars,std::function<double(double,double,double,double*)>wavelet_tol, double amr_coarse_fac)
+    {
+
+        const unsigned int eleLocalBegin = pMesh->getElementLocalBegin();
+        const unsigned int eleLocalEnd = pMesh->getElementLocalEnd();
+        bool isOctChange=false;
+        bool isOctChange_g =false;
+ 
+        if(pMesh->isActive()){
+            std::vector<unsigned int> refine_flags = bssn::isRemeshSinSHelper(pMesh, bhLoc);
+            std::vector<unsigned int> refine_flags_WAMR = bssn::isReMeshWAMRHelper(pMesh, unzippedVec, varIds, numVars, wavelet_tol, amr_coarse_fac);
+            for(unsigned int ele = eleLocalBegin; ele < eleLocalEnd; ele++)
+            {
+              if(refine_flags[ele-eleLocalBegin] == OCT_IGNORE)
+              {
+                refine_flags[ele-eleLocalBegin] = refine_flags_WAMR[ele-eleLocalBegin];
+              }
+            }
+            
+            isOctChange = pMesh->setMeshRefinementFlags(refine_flags);
+
+        }
+
+        MPI_Allreduce(&isOctChange,&isOctChange_g,1,MPI_CXX_BOOL,MPI_LOR,pMesh->getMPIGlobalCommunicator());
+        return isOctChange_g;
+        
+    }
+
+    std::vector<unsigned int> isRemeshSinSHelper(ot::Mesh* pMesh, const Point* bhLoc)
     {
         const unsigned int eleLocalBegin = pMesh->getElementLocalBegin();
         const unsigned int eleLocalEnd = pMesh->getElementLocalEnd();
         bool isOctChange=false;
         bool isOctChange_g =false;
 
-        const double * bssn_box_radii_at[] = {bssn::BSSN_BOX_OUTER_RADII};
-        
+        const double * bssn_box_radii_at[] = {bssn::BSSN_BOX_RADII_1, bssn::BSSN_BOX_RADII_2};
+
         std::vector<unsigned int> refine_flags;
-        const double r_near[2] = {bssn::BSSN_BH1_AMR_R,bssn::BSSN_BH2_AMR_R};
-
-        Point d1, d2, temp;
-
-        const unsigned int eOrder = pMesh->getElementOrder();
-        const double dBH = (BSSN_BH_LOC[0]-BSSN_BH_LOC[1]).abs();
-        const unsigned int refLevMin = std::min(bssn::BSSN_BH1_MAX_LEV,bssn::BSSN_BH2_MAX_LEV);
-
-        const double BH_MERGED_SEP_TOL=0.1;
- 
         if(pMesh->isActive())
         {
-            unsigned int out_in_region;
             const ot::TreeNode * pNodes = pMesh->getAllElements().data();
-        
+
             refine_flags.resize(pMesh->getNumLocalMeshElements(),OCT_NO_CHANGE);
 
             for(unsigned int ele = eleLocalBegin; ele< eleLocalEnd; ele++)
             {
                 const unsigned int ln = 1u<<(m_uiMaxDepth-pNodes[ele].getLevel());
                 unsigned int punct_id = 0;
+
 
                 const double x_min = pNodes[ele].minX();
                 const double y_min = pNodes[ele].minY();
@@ -251,272 +270,345 @@ namespace bssn
                 const double rp1 = min_distance_cell_to_point(coord_min, coord_max, bhLoc[0]);
                 const double rp2 = min_distance_cell_to_point(coord_min, coord_max, bhLoc[1]);
 
-                
-                if (rp1 > bssn::BSSN_BOX_OUTER_RADII[bssn::BSSN_BOX_OUTER_NUM_LEVELS-1] || rp2 > bssn::BSSN_BOX_OUTER_RADII[bssn::BSSN_BOX_OUTER_NUM_LEVELS-1])
+                if (rp1 < rp2)
                 {
-                    //* 1 = outer SiS region, 0 = inner WAMR region
-                    unsigned int out_in_region = 1;
-                    if (rp1 < rp2)
+                    punct_id = 0;
+                }
+                else
+                {
+                    punct_id = 1;
+                }
+                const double rp = std::min(rp1, rp2);
+                int last_radii_index = bssn::BSSN_BOX_NUM_LEVELS[punct_id]-1;
+                unsigned int refinement_modes_num = bssn::BSSN_REFINEMENT_NUM_MODES;
+                //FILE *fp;
+                //fp = fopen("out_file.txt", "a");
+                if (bssn::BSSN_REFINEMENT_MODE_COMBINATION_ORDER[0] == 4 & rp < bssn_box_radii_at[punct_id][last_radii_index]) 
+                {
+                    refine_flags[ele-eleLocalBegin] = OCT_IGNORE;
+                    fprintf(stderr, "%.2f SoWi OCT_IGNORE TRIGGERED\n", rp);
+                    continue;
+                }     
+                else if (bssn::BSSN_REFINEMENT_MODE_COMBINATION_ORDER[refinement_modes_num-1] == 4 & rp > bssn_box_radii_at[punct_id][0]) 
+                {
+                    refine_flags[ele-eleLocalBegin] = OCT_IGNORE;
+                    fprintf(stderr, "%.2f WoSi OCT_IGNORE TRIGGERED\n", rp);
+                    continue;
+                } 
+                for (int level = 0; level < bssn::BSSN_BOX_NUM_LEVELS[punct_id]; level ++)
+                {
+                  if (rp >= bssn_box_radii_at[punct_id][level])
+                  {
+                    fprintf(stderr, "%.2f %d %d %d\n", rp, pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF, bssn::BSSN_MINDEPTH_SIS + level, level);
+                    if ( ( pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1) > bssn::BSSN_MINDEPTH_SIS + level )
                     {
-                        punct_id = 0;
+                        refine_flags[ele-eleLocalBegin] = OCT_COARSE;
+                        fprintf(stderr, "%.2f OCT_COARSE TRIGGERED\n", rp);
+                    }
+                    else if  ( ( pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1) < bssn::BSSN_MINDEPTH_SIS + level )
+                    {
+                        refine_flags[ele-eleLocalBegin] = OCT_SPLIT;
+                        fprintf(stderr, "%.2f OCT_SPLIT TRIGGERED\n", rp); 
                     }
                     else
                     {
-                        punct_id = 1;
+                        refine_flags[ele-eleLocalBegin] = OCT_NO_CHANGE;
+                        fprintf(stderr, "%.2f OCT_NO_CHANGE TRIGGERED\n", rp); 
                     }
-                    const double rp = std::min(rp1, rp2);
 
-                    for (int level = 0; level < bssn::BSSN_BOX_OUTER_NUM_LEVELS; level ++)
-                    {
-                      if (rp >= bssn_box_radii_at[punct_id][level])
-                      {
-                        if ( ( pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1) > bssn::BSSN_SIS_MINDEPTH + level )
-                        {
-                            refine_flags[ele-eleLocalBegin] = OCT_COARSE;
-                        }
-                        else if  ( ( pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1) < bssn::BSSN_SIS_MINDEPTH + level )
-                        {
-                            refine_flags[ele-eleLocalBegin] = OCT_SPLIT;
-                        }
-                        else
-                        {
-                            refine_flags[ele-eleLocalBegin] = OCT_NO_CHANGE;
-                        }
-
-                        break;
-                      }
-                    }
+                    break;
+                  }
                 } 
-                else 
-                {
-                    unsigned int out_in_region = 0;
-                    if(!pMesh->getMPIRank())
-                        printf("BH coord sep: %.8E \n",dBH);
-
-                    const RefElement* refEl = pMesh->getReferenceElement();
-                    wavelet::WaveletEl* wrefEl = new wavelet::WaveletEl((RefElement*)refEl);
-
-                    refine_flags.resize(pMesh->getNumLocalMeshElements(),OCT_NO_CHANGE);
-                    const ot::TreeNode* pNodes =pMesh->getAllElements().data();
-
-                    std::vector<double> wtol_vals;
-                    wtol_vals.resize(BSSN_NUM_VARS,0);
-
-                    const std::vector<ot::Block>& blkList = pMesh->getLocalBlockList();
-                    const unsigned int eOrder = pMesh->getElementOrder();
-
-                    const unsigned int nx = (2*eOrder+1);
-                    const unsigned int ny = (2*eOrder+1);
-                    const unsigned int nz = (2*eOrder+1);
-
-                    const unsigned int sz_per_dof = nx*ny*nz;
-                    const unsigned int isz[] = {nx,ny,nz};
-                    std::vector<double> eVecTmp;
-                    eVecTmp.resize(sz_per_dof);
-
-                    std::vector<double> wCout;
-                    wCout.resize(sz_per_dof);
-
-                    for(unsigned int blk=0; blk <blkList.size(); blk++)
-                    {
-                        const unsigned int pw = blkList[blk].get1DPadWidth();
-                        const unsigned int bflag = blkList[blk].getBlkNodeFlag();
-                        assert(pw == (eOrder>>1u));
-
-                        for(unsigned int ele =blkList[blk].getLocalElementBegin(); ele < blkList[blk].getLocalElementEnd(); ele++)
-                        {
-
-                            const bool isBdyOct = pMesh->isBoundaryOctant(ele);
-                            const double oct_dx = (1u<<(m_uiMaxDepth-pNodes[ele].getLevel()))/(double(eOrder));
-
-                            Point oct_pt1 = Point(pNodes[ele].minX() , pNodes[ele].minY(), pNodes[ele].minZ());
-                            Point oct_pt2 = Point(pNodes[ele].minX() + oct_dx , pNodes[ele].minY() + oct_dx, pNodes[ele].minZ() + oct_dx);
-                            Point domain_pt1,domain_pt2,dx_domain;
-                            pMesh->octCoordToDomainCoord(oct_pt1,domain_pt1);
-                            pMesh->octCoordToDomainCoord(oct_pt2,domain_pt2);
-                            dx_domain=domain_pt2-domain_pt1;
-                            double hx[3] ={dx_domain.x(),dx_domain.y(),dx_domain.z()};
-                            const double tol_ele = wavelet_tol(domain_pt1.x(),domain_pt1.y(),domain_pt1.z(),hx); 
-
-                            for(unsigned int v=0; v < BSSN_NUM_VARS; v++)
-                                wtol_vals[v]=0;
-
-                            for(unsigned int v=0; v < numVars; v++)
-                            {
-                                const unsigned int vid = varIds[v];
-                                pMesh->getUnzipElementalNodalValues(unzippedVec[vid],blk, ele, eVecTmp.data(), true);
-
-                                wrefEl->compute_wavelets_3D((double*)(eVecTmp.data()),isz,wCout,isBdyOct);
-                                wtol_vals[vid] = (normL2(wCout.data(),wCout.size()))/sqrt(wCout.size());
-
-                                if(wtol_vals[vid]>tol_ele)
-                                    break;
-
-                            } 
-                                
-
-                            const double l_max = vecMax(wtol_vals.data(),wtol_vals.size());
-                            if(l_max > tol_ele )
-                            {
-                                refine_flags[(ele-eleLocalBegin)] = OCT_SPLIT;
-                            }
-                            else if( l_max < amr_coarse_fac *tol_ele)
-                            {
-                                refine_flags[(ele-eleLocalBegin)] = OCT_COARSE;
-                            }
-                            else
-                            {
-                                refine_flags[(ele-eleLocalBegin)] = OCT_NO_CHANGE;
-                            }
-
-
-
-                        }
-
-                    }  
-
-                    delete wrefEl;
-
-                    for(unsigned int ele=eleLocalBegin; ele< eleLocalEnd; ele++)
-                    {
-                        pMesh->octCoordToDomainCoord(Point((double)pNodes[ele].minX(),(double)pNodes[ele].minY(),(double)pNodes[ele].minZ()),temp);
-                        d1 = temp -BSSN_BH_LOC[0];
-                        d2 = temp -BSSN_BH_LOC[1];
-
-                        if( pNodes[ele].getLevel() < bssn::BSSN_MINDEPTH) {
-                            refine_flags[ele-eleLocalBegin]=OCT_SPLIT;
-                        }
-                        else if( pNodes[ele].getLevel() == bssn::BSSN_MINDEPTH && refine_flags[ele-eleLocalBegin]==OCT_COARSE){
-                            refine_flags[ele-eleLocalBegin]=OCT_NO_CHANGE;
-                        }
-                            
-                        if(d1.abs()>10 && d2.abs()>10)
-                            continue;
-                        else
-                        {
-                            const unsigned int ln = 1u<<(m_uiMaxDepth-pNodes[ele].getLevel());
-                            const double hx = ln/(double)(eOrder);
-                            for(unsigned int k=0; k < (eOrder+1); k++)
-                            for(unsigned int j=0; j < (eOrder+1); j++)
-                            for(unsigned int i=0; i < (eOrder+1); i++)
-                            {
-                                const double x = pNodes[ele].minX() + k*hx;
-                                const double y = pNodes[ele].minY() + j*hx;
-                                const double z = pNodes[ele].minZ() + i*hx;
-                                const Point oct_mid = Point(x,y,z);
-
-                                pMesh->octCoordToDomainCoord(oct_mid,temp);
-
-                                d1 = temp -BSSN_BH_LOC[0];
-                                d2 = temp -BSSN_BH_LOC[1];
-
-                                const double rd1 = d1.abs();
-                                const double rd2 = d2.abs();
-
-                                const bool isNearTobh1  = (rd1 <= r_near[0]);
-                                const bool isNearTobh2  = (rd2 <= r_near[1]);
-
-                                const bool isMidNearTobh1 = (rd1 > r_near[0] && rd1<=10.0*r_near[0]);
-                                const bool isMidNearTobh2 = (rd2 > r_near[1] && rd1<=10.0*r_near[1]);
-
-                                const bool isFarTobh1 = (rd1 > 2.0*r_near[0]);
-                                const bool isFarTobh2 = (rd2 > 2.0*r_near[1]);
-
-                                if(dBH< BH_MERGED_SEP_TOL)
-                                {
-                                    if( isNearTobh1 || isNearTobh2 )
-                                    {
-   
-                                        if( ( pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1)< refLevMin )
-                                            refine_flags[ele-eleLocalBegin] = OCT_SPLIT;
-                                        else if ( ( pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1)> refLevMin )
-                                            refine_flags[ele-eleLocalBegin] = OCT_COARSE;
-                                        else
-                                            refine_flags[ele-eleLocalBegin] = OCT_NO_CHANGE;
-                                    }
-                                }else
-                                {
-
-                                    if(bssn::BSSN_BH1_MAX_LEV == refLevMin)
-                                    {
-                                        if(isNearTobh1)
-                                        {
-                                            if( ( pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1)< bssn::BSSN_BH1_MAX_LEV )
-                                                refine_flags[ele-eleLocalBegin] = OCT_SPLIT;
-                                            else if ( ( pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1)> bssn::BSSN_BH1_MAX_LEV )
-                                                refine_flags[ele-eleLocalBegin] = OCT_COARSE;
-                                            else
-                                                refine_flags[ele-eleLocalBegin] = OCT_NO_CHANGE;
-
-                                        }else
-                                        {
-                                            if(refine_flags[ele-eleLocalBegin]==OCT_SPLIT && ( pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1) == bssn::BSSN_BH1_MAX_LEV)
-                                                refine_flags[ele-eleLocalBegin]=OCT_NO_CHANGE;
-                                            else if ( ( pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1)> bssn::BSSN_BH1_MAX_LEV )
-                                                refine_flags[ele-eleLocalBegin] = OCT_COARSE;
-                                        }
-                                        if(isNearTobh2)
-                                        {   
-                                            if( ( pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1)< bssn::BSSN_BH2_MAX_LEV )
-                                                refine_flags[ele-eleLocalBegin] = OCT_SPLIT;
-                                            else if ( ( pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1)> bssn::BSSN_BH2_MAX_LEV )
-                                                refine_flags[ele-eleLocalBegin] = OCT_COARSE;
-                                            else
-                                                refine_flags[ele-eleLocalBegin] = OCT_NO_CHANGE;
-                                        }
-                                    }else
-                                    {
-                                        assert(bssn::BSSN_BH2_MAX_LEV==refLevMin);
-                                        if(isNearTobh2)
-                                        {
-                                            if( ( pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1)< bssn::BSSN_BH2_MAX_LEV )
-                                                refine_flags[ele-eleLocalBegin] = OCT_SPLIT;
-                                            else if ( ( pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1)> bssn::BSSN_BH2_MAX_LEV )
-                                                refine_flags[ele-eleLocalBegin] = OCT_COARSE;
-                                            else
-                                                refine_flags[ele-eleLocalBegin] = OCT_NO_CHANGE;
-                                    
-                                        }else
-                                        {
-                                            if(refine_flags[ele-eleLocalBegin]==OCT_SPLIT && ( pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1) == bssn::BSSN_BH2_MAX_LEV)
-                                                refine_flags[ele-eleLocalBegin]=OCT_NO_CHANGE;
-                                            else if ( ( pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1)> bssn::BSSN_BH2_MAX_LEV )
-                                                refine_flags[ele-eleLocalBegin] = OCT_COARSE;
-                                 
-                                        }
-         
-                                        if(isNearTobh1)
-                                        {
-                                            if( ( pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1)< bssn::BSSN_BH1_MAX_LEV )
-                                                refine_flags[ele-eleLocalBegin] = OCT_SPLIT;
-                                            else if ( ( pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1)> bssn::BSSN_BH1_MAX_LEV )
-                                                refine_flags[ele-eleLocalBegin] = OCT_COARSE;
-                                            else
-                                                refine_flags[ele-eleLocalBegin] = OCT_NO_CHANGE;
-                                
-                                        }
-  
-                                    }  
-                                }
-                            }
-                     }    
-                }
-
-                isOctChange = pMesh->setMeshRefinementFlags(refine_flags);
+                //fprintf(fp, "%.2f %d %d %d\n", rp, pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF, bssn::BSSN_MINDEPTH_SIS + level, level);
+                //fclose(fp);  
+                return refine_flags;
             }
-        if(out_in_region==1)
-        {
-            bool isOctChanged_g;
-            MPI_Allreduce(&isOctChange,&isOctChanged_g,1,MPI_CXX_BOOL,MPI_LOR,pMesh->getMPIGlobalCommunicator());
-            return isOctChanged_g;
-        }
-        else if(out_in_region==0)
-        {
-            MPI_Allreduce(&isOctChange,&isOctChange_g,1,MPI_CXX_BOOL,MPI_LOR,pMesh->getMPIGlobalCommunicator());
-            return isOctChange_g;
         }
     }
 
+    
+    std::vector<unsigned int> isReMeshWAMRHelper(ot::Mesh* pMesh, const double **unzippedVec,const unsigned int * varIds,const unsigned int numVars,std::function<double(double,double,double,double*)>wavelet_tol,double amr_coarse_fac)
+    {
+        // if(!(pMesh->isReMeshUnzip((const double **)unzippedVec,varIds,numVars,wavelet_tol,bssn::BSSN_DENDRO_AMR_FAC)))
+        //     return false;
+
+        // if(bssn::BSSN_CURRENT_RK_COORD_TIME > 0 && bssn::BSSN_CURRENT_RK_COORD_TIME < 80)
+        //     return bssn::isReMeshBHRadial(pMesh);
+
+        std::vector<unsigned int> refine_flags;
+        const double r_near[2] = {bssn::BSSN_BH1_AMR_R,bssn::BSSN_BH2_AMR_R};
+        
+        const unsigned int eleLocalBegin = pMesh->getElementLocalBegin();
+        const unsigned int eleLocalEnd = pMesh->getElementLocalEnd();
+        bool isOctChange=false;
+        bool isOctChange_g =false;
+        Point d1, d2, temp;
+
+        const unsigned int eOrder = pMesh->getElementOrder();
+        const double dBH = (BSSN_BH_LOC[0]-BSSN_BH_LOC[1]).abs();
+        const unsigned int refLevMin = std::min(bssn::BSSN_BH1_MAX_LEV,bssn::BSSN_BH2_MAX_LEV);
+
+        // BH considered merged if the distance between punctures are less than the specified value. 
+        const double BH_MERGED_SEP_TOL=0.1;
+        
+        if(pMesh->isActive())
+        {
+            if(!pMesh->getMPIRank())
+                printf("BH coord sep: %.8E \n",dBH);//std::cout<<"BH coord sep: "<<dBH<<std::endl;
+
+            const RefElement* refEl = pMesh->getReferenceElement();
+            wavelet::WaveletEl* wrefEl = new wavelet::WaveletEl((RefElement*)refEl);
+
+            refine_flags.resize(pMesh->getNumLocalMeshElements(),OCT_NO_CHANGE);
+            const ot::TreeNode* pNodes =pMesh->getAllElements().data();
+
+            std::vector<double> wtol_vals;
+            wtol_vals.resize(BSSN_NUM_VARS,0);
+
+            const std::vector<ot::Block>& blkList = pMesh->getLocalBlockList();
+            const unsigned int eOrder = pMesh->getElementOrder();
+            
+            const unsigned int nx = (2*eOrder+1);
+            const unsigned int ny = (2*eOrder+1);
+            const unsigned int nz = (2*eOrder+1); 
+            
+            const unsigned int sz_per_dof = nx*ny*nz;
+            const unsigned int isz[] = {nx,ny,nz};
+            std::vector<double> eVecTmp;
+            eVecTmp.resize(sz_per_dof);
+
+            std::vector<double> wCout;
+            wCout.resize(sz_per_dof);
+
+            for(unsigned int blk=0; blk <blkList.size(); blk++)
+            {
+                const unsigned int pw = blkList[blk].get1DPadWidth();
+                const unsigned int bflag = blkList[blk].getBlkNodeFlag();
+                assert(pw == (eOrder>>1u));
+                
+                for(unsigned int ele =blkList[blk].getLocalElementBegin(); ele < blkList[blk].getLocalElementEnd(); ele++)
+                {
+                
+                    const bool isBdyOct = pMesh->isBoundaryOctant(ele);
+                    const double oct_dx = (1u<<(m_uiMaxDepth-pNodes[ele].getLevel()))/(double(eOrder));
+
+                    Point oct_pt1 = Point(pNodes[ele].minX() , pNodes[ele].minY(), pNodes[ele].minZ());
+                    Point oct_pt2 = Point(pNodes[ele].minX() + oct_dx , pNodes[ele].minY() + oct_dx, pNodes[ele].minZ() + oct_dx);
+                    Point domain_pt1,domain_pt2,dx_domain;
+                    pMesh->octCoordToDomainCoord(oct_pt1,domain_pt1);
+                    pMesh->octCoordToDomainCoord(oct_pt2,domain_pt2);
+                    dx_domain=domain_pt2-domain_pt1;
+                    double hx[3] ={dx_domain.x(),dx_domain.y(),dx_domain.z()};
+                    const double tol_ele = wavelet_tol(domain_pt1.x(),domain_pt1.y(),domain_pt1.z(),hx);
+                    
+                    // initialize all the wavelet errors to zero initially. 
+                    for(unsigned int v=0; v < BSSN_NUM_VARS; v++)
+                        wtol_vals[v]=0;
+                    
+                    for(unsigned int v=0; v < numVars; v++)
+                    {
+                        const unsigned int vid = varIds[v];
+                        pMesh->getUnzipElementalNodalValues(unzippedVec[vid],blk, ele, eVecTmp.data(), true);
+
+                        // computes the wavelets. 
+                        wrefEl->compute_wavelets_3D((double*)(eVecTmp.data()),isz,wCout,isBdyOct);
+                        wtol_vals[vid] = (normL2(wCout.data(),wCout.size()))/sqrt(wCout.size());
+
+                        // early bail if the computed tolerance valule is large. 
+                        if(wtol_vals[vid]>tol_ele)
+                            break;
+                        
+                    }
+
+
+                    const double l_max = vecMax(wtol_vals.data(),wtol_vals.size());
+                    if(l_max > tol_ele )
+                    {
+                        refine_flags[(ele-eleLocalBegin)] = OCT_SPLIT;
+                    }
+                    else if( l_max < amr_coarse_fac *tol_ele)
+                    {
+                        refine_flags[(ele-eleLocalBegin)] = OCT_COARSE;
+                    }
+                    else
+                    {
+                        refine_flags[(ele-eleLocalBegin)] = OCT_NO_CHANGE;
+                    }
+                        
+                    
+
+                }
+
+            }
+
+            delete wrefEl;
+            
+            // --- Below code enforces the artifical refinement by looking at the puncture locations, by
+            // --- overiding what currently set by the wavelets. 
+            for(unsigned int ele=eleLocalBegin; ele< eleLocalEnd; ele++)
+            {
+                
+                //refine_flags[ele-eleLocalBegin] = (pNodes[ele].getFlag()>>NUM_LEVEL_BITS);
+                //std::cout<<"ref flag: "<<(pNodes[ele].getFlag()>>NUM_LEVEL_BITS)<<std::endl;
+                //if(refine_flags[ele-eleLocalBegin]==OCT_SPLIT)
+                pMesh->octCoordToDomainCoord(Point((double)pNodes[ele].minX(),(double)pNodes[ele].minY(),(double)pNodes[ele].minZ()),temp);
+                d1 = temp -BSSN_BH_LOC[0]; 
+                d2 = temp -BSSN_BH_LOC[1];
+
+                //@milinda: 11/21/2020 : Don't allow to violate the min depth
+                if( pNodes[ele].getLevel() < bssn::BSSN_MINDEPTH) {
+                    refine_flags[ele-eleLocalBegin]=OCT_SPLIT;
+                }
+                else if( pNodes[ele].getLevel() == bssn::BSSN_MINDEPTH && refine_flags[ele-eleLocalBegin]==OCT_COARSE){
+                    refine_flags[ele-eleLocalBegin]=OCT_NO_CHANGE;
+                }
+
+                // don't overide things away from puntures let wavelets handle that. 
+                if(d1.abs()>10 && d2.abs()>10)
+                    continue;
+                else
+                {
+                    
+                    const unsigned int ln = 1u<<(m_uiMaxDepth-pNodes[ele].getLevel());
+                    const double hx = ln/(double)(eOrder);
+                    for(unsigned int k=0; k < (eOrder+1); k++)
+                    for(unsigned int j=0; j < (eOrder+1); j++)
+                    for(unsigned int i=0; i < (eOrder+1); i++)
+                    {
+                        const double x = pNodes[ele].minX() + k*hx;
+                        const double y = pNodes[ele].minY() + j*hx;
+                        const double z = pNodes[ele].minZ() + i*hx;
+                        const Point oct_mid = Point(x,y,z);
+                        
+                        pMesh->octCoordToDomainCoord(oct_mid,temp);
+
+                        d1 = temp -BSSN_BH_LOC[0]; 
+                        d2 = temp -BSSN_BH_LOC[1];
+
+                        //std::cout<<"d1: "<<d1 << "BHLOC_0:"<<BSSN_BH_LOC[0]<<std::endl;
+                        //std::cout<<"d2: "<<d2<<std::endl;
+
+                        const double rd1 = d1.abs();
+                        const double rd2 = d2.abs();
+                        
+                        const bool isNearTobh1  = (rd1 <= r_near[0]);
+                        const bool isNearTobh2  = (rd2 <= r_near[1]);
+
+                        const bool isMidNearTobh1 = (rd1 > r_near[0] && rd1<=10.0*r_near[0]);
+                        const bool isMidNearTobh2 = (rd2 > r_near[1] && rd1<=10.0*r_near[1]);
+
+                        const bool isFarTobh1 = (rd1 > 2.0*r_near[0]);
+                        const bool isFarTobh2 = (rd2 > 2.0*r_near[1]);
+
+                        if(dBH< BH_MERGED_SEP_TOL)
+                        {
+                            if( isNearTobh1 || isNearTobh2 )
+                            {
+                                // std::cout<<"d1: "<<d1.abs()<<"BHLOC_0:"<<BSSN_BH_LOC[0]<<std::endl;
+                                // std::cout<<"d2: "<<d2.abs()<<"BHLOC_1:"<<BSSN_BH_LOC[1]<<std::endl;
+
+                                if( ( pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1)< refLevMin )
+                                    refine_flags[ele-eleLocalBegin] = OCT_SPLIT;
+                                else if ( ( pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1)> refLevMin )
+                                    refine_flags[ele-eleLocalBegin] = OCT_COARSE;
+                                else
+                                    refine_flags[ele-eleLocalBegin] = OCT_NO_CHANGE;
+
+                                // if( ( pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1)== refLevMin )
+                                //     refine_flags[ele-eleLocalBegin] = OCT_NO_CHANGE;
+                                // else if(( pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1)> refLevMin)
+                                //     refine_flags[ele-eleLocalBegin] = OCT_COARSE;
+                            }
+                            
+                        }else
+                        {
+
+                            if(bssn::BSSN_BH1_MAX_LEV == refLevMin)
+                            {
+                                if(isNearTobh1)
+                                {
+                                    //std::cout<<"d1: "<<d1.abs()<<"BHLOC_0:"<<BSSN_BH_LOC[0]<<" rnear: "<<r_near[0]<<std::endl;
+                                    if( ( pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1)< bssn::BSSN_BH1_MAX_LEV )
+                                        refine_flags[ele-eleLocalBegin] = OCT_SPLIT;
+                                    else if ( ( pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1)> bssn::BSSN_BH1_MAX_LEV )
+                                        refine_flags[ele-eleLocalBegin] = OCT_COARSE;
+                                    else
+                                        refine_flags[ele-eleLocalBegin] = OCT_NO_CHANGE;
+                                    
+                                }else
+                                {
+
+                                    if(refine_flags[ele-eleLocalBegin]==OCT_SPLIT && ( pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1) == bssn::BSSN_BH1_MAX_LEV)
+                                        refine_flags[ele-eleLocalBegin]=OCT_NO_CHANGE;
+                                    else if ( ( pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1)> bssn::BSSN_BH1_MAX_LEV )
+                                        refine_flags[ele-eleLocalBegin] = OCT_COARSE;
+                                    
+                                }
+
+                                // changes in bh 1 will get overidden by lev 2
+                                if(isNearTobh2)
+                                {
+                                    if( ( pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1)< bssn::BSSN_BH2_MAX_LEV )
+                                        refine_flags[ele-eleLocalBegin] = OCT_SPLIT;
+                                    else if ( ( pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1)> bssn::BSSN_BH2_MAX_LEV )
+                                        refine_flags[ele-eleLocalBegin] = OCT_COARSE;
+                                    else
+                                        refine_flags[ele-eleLocalBegin] = OCT_NO_CHANGE;
+
+                                }
+
+                            }else
+                            {
+                                assert(bssn::BSSN_BH2_MAX_LEV==refLevMin);
+                                if(isNearTobh2)
+                                {
+                                    //std::cout<<"d1: "<<d1.abs()<<"BHLOC_0:"<<BSSN_BH_LOC[0]<<" rnear: "<<r_near[0]<<std::endl;
+                                    if( ( pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1)< bssn::BSSN_BH2_MAX_LEV )
+                                        refine_flags[ele-eleLocalBegin] = OCT_SPLIT;
+                                    else if ( ( pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1)> bssn::BSSN_BH2_MAX_LEV )
+                                        refine_flags[ele-eleLocalBegin] = OCT_COARSE;
+                                    else
+                                        refine_flags[ele-eleLocalBegin] = OCT_NO_CHANGE;
+                                    
+                                }else
+                                {
+
+                                    if(refine_flags[ele-eleLocalBegin]==OCT_SPLIT && ( pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1) == bssn::BSSN_BH2_MAX_LEV)
+                                        refine_flags[ele-eleLocalBegin]=OCT_NO_CHANGE;
+                                    else if ( ( pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1)> bssn::BSSN_BH2_MAX_LEV )
+                                        refine_flags[ele-eleLocalBegin] = OCT_COARSE;
+                                    
+                                }
+
+                                // changes in bh 2 will get overidden by lev 1 which is the higher level than bh2. 
+                                if(isNearTobh1)
+                                {
+                                    if( ( pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1)< bssn::BSSN_BH1_MAX_LEV )
+                                        refine_flags[ele-eleLocalBegin] = OCT_SPLIT;
+                                    else if ( ( pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1)> bssn::BSSN_BH1_MAX_LEV )
+                                        refine_flags[ele-eleLocalBegin] = OCT_COARSE;
+                                    else
+                                        refine_flags[ele-eleLocalBegin] = OCT_NO_CHANGE;
+
+                                }
+
+                            }
+                            
+                        }
+                    }
+
+                     
+                }
+
+            }
+
+        }
+
+    return refine_flags;
+        
+    } 
+     
+     
     bool isRemeshSinS(ot::Mesh* pMesh, const Point* bhLoc)
     {    
         const unsigned int eleLocalBegin = pMesh->getElementLocalBegin();
@@ -578,11 +670,11 @@ namespace bssn
                 {
                   if (rp >= bssn_box_radii_at[punct_id][level])
                   {
-                    if ( ( pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1) > bssn::BSSN_MINDEPTH + level )
+                    if ( ( pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1) > bssn::BSSN_MINDEPTH_SIS + level )
                     {
                         refine_flags[ele-eleLocalBegin] = OCT_COARSE;
                     }
-                    else if  ( ( pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1) < bssn::BSSN_MINDEPTH + level )
+                    else if  ( ( pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1) < bssn::BSSN_MINDEPTH_SIS + level )
                     {
                         refine_flags[ele-eleLocalBegin] = OCT_SPLIT;
                     }

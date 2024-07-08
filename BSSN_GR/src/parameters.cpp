@@ -78,6 +78,7 @@ namespace bssn
     unsigned int BSSN_DIM=3;
     unsigned int BSSN_MAXDEPTH=8;
     unsigned int BSSN_MINDEPTH=3;
+    unsigned int BSSN_MINDEPTH_SIS=7;
 
 
     unsigned int BSSN_ID_TYPE=0;
@@ -160,11 +161,12 @@ namespace bssn
     double* BSSN_DERIV_WORKSPACE=nullptr;
     
     double WALL_TIME = 1.0e300;
+    unsigned int BSSN_REFINEMENT_NUM_MODES = 2;
+    unsigned int BSSN_REFINEMENT_MODE_COMBINATION_ORDER[2];
     unsigned int BSSN_BOX_NUM_LEVELS[2];
     double BSSN_BOX_RADII_1[BSSN_BOX_MAX_RADII];
     double BSSN_BOX_RADII_2[BSSN_BOX_MAX_RADII];
-    unsigned int BSSN_BOX_TYPE = 0 ;
-
+    unsigned int BSSN_BOX_TYPE = 0;
 }
 
 namespace TPID {
