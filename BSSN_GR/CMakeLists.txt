@@ -352,6 +352,8 @@ target_include_directories(bssn_lib PRIVATE ${MPI_INCLUDE_PATH})
 target_include_directories(bssn_lib PRIVATE ${GSL_INCLUDE_DIRS})
 target_include_directories(bssn_lib PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_include_directories(bssn_lib PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/scripts)
+# if we're using the Git Functionality
+target_include_directories(bssn_lib PRIVATE ${CHECK_GIT_INCLUDE_PATH})
 
 add_executable(rhscpu_test cuda/src/rhs_test.cpp)
 target_include_directories(rhscpu_test PRIVATE ${CMAKE_SOURCE_DIR}/dendrolib/include)
@@ -367,7 +369,7 @@ target_include_directories(rhscpu_test PRIVATE ${GSL_INCLUDE_DIRS})
 target_include_directories(rhscpu_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_include_directories(rhscpu_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/cuda/include)
 target_include_directories(rhscpu_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/scripts)
-target_link_libraries(rhscpu_test bssn_lib dendro5 ${LAPACK_LIBRARIES} ${MPI_LIBRARIES} ${GSL_LIBRARIES} m)
+target_link_libraries(rhscpu_test bssn_lib dendro5 ${LAPACK_LIBRARIES} ${MPI_LIBRARIES} ${GSL_LIBRARIES} m dendro_git_version_and_date)
 
 #add_library(had_rhs STATIC src/hadrhs.F90)
 
@@ -391,7 +393,7 @@ if(WITH_CUDA)
     target_link_libraries(bssnSolver bssn_cuda)
     target_link_libraries(bssnSolver ${CUDA_LIBRARIES})
 endif()
-target_link_libraries(bssnSolver dendro5 ${LAPACK_LIBRARIES} ${MPI_LIBRARIES} ${GSL_LIBRARIES} m)
+target_link_libraries(bssnSolver dendro5 ${LAPACK_LIBRARIES} ${MPI_LIBRARIES} ${GSL_LIBRARIES} m dendro_git_version_and_date)
 
 add_executable(bssnSolverCtx src/bssngr_main.cpp src/bssnCtx.cpp)
 target_include_directories(bssnSolverCtx PRIVATE ${CMAKE_SOURCE_DIR}/dendrolib/include)
@@ -411,7 +413,7 @@ target_include_directories(bssnSolverCtx PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/cud
 target_include_directories(bssnSolverCtx PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/scripts)
 target_include_directories(bssnSolverCtx PRIVATE ${CUDA_INCLUDE_DIRS})
 target_link_libraries(bssnSolverCtx bssn_lib dendro5 ${CUDA_LIBRARIES})
-target_link_libraries(bssnSolverCtx ${LAPACK_LIBRARIES} ${MPI_LIBRARIES} ${GSL_LIBRARIES} m)
+target_link_libraries(bssnSolverCtx ${LAPACK_LIBRARIES} ${MPI_LIBRARIES} ${GSL_LIBRARIES} m dendro_git_version_and_date)
 
 # set(SOURCE_FILES src/gr_scaling.cpp include/gr.h ${BSSN_INC} ${BSSN_SRC} ${CUDA_GR_INCLUDE_H} ${CUDA_GR_SRC_CPP})
 # add_executable(bssnScalingTest ${SOURCE_FILES})
@@ -458,7 +460,7 @@ if(WITH_CUDA)
     target_link_libraries(bssnWAMRTest bssn_cuda)
     target_link_libraries(bssnWAMRTest ${CUDA_LIBRARIES})
 endif()
-target_link_libraries(bssnWAMRTest dendro5 ${LAPACK_LIBRARIES} ${MPI_LIBRARIES} ${GSL_LIBRARIES} m)
+target_link_libraries(bssnWAMRTest dendro5 ${LAPACK_LIBRARIES} ${MPI_LIBRARIES} ${GSL_LIBRARIES} m dendro_git_version_and_date)
 
 
 
@@ -507,7 +509,7 @@ if(WITH_CUDA)
     target_link_libraries(checkDerivs bssn_cuda)
     target_link_libraries(checkDerivs ${CUDA_LIBRARIES})
 endif()
-target_link_libraries(checkDerivs dendro5 ${LAPACK_LIBRARIES} ${MPI_LIBRARIES} ${GSL_LIBRARIES} m)
+target_link_libraries(checkDerivs dendro5 ${LAPACK_LIBRARIES} ${MPI_LIBRARIES} ${GSL_LIBRARIES} m dendro_git_version_and_date)
 
 # if(WITH_CUDA)
 #     set(SOURCE_FILES cuda_gr/src/gpuBSSNExample.cpp ${BSSN_INC} ${BSSN_SRC} ${CUDA_GR_INCLUDE_H} ${CUDA_GR_SRC_CPP})
@@ -613,7 +615,7 @@ if(WITH_CUDA)
     target_link_libraries(zipUnzipTest ${CUDA_LIBRARIES})
 endif()
 
-target_link_libraries(zipUnzipTest dendro5 ${LAPACK_LIBRARIES} ${MPI_LIBRARIES} ${GSL_LIBRARIES} m)
+target_link_libraries(zipUnzipTest dendro5 ${LAPACK_LIBRARIES} ${MPI_LIBRARIES} ${GSL_LIBRARIES} m dendro_git_version_and_date)
 
 
 if(BSSN_EXTRACT_GRAVITATIONAL_WAVES)
@@ -646,6 +648,6 @@ if(WITH_CUDA)
     target_link_libraries(tpid bssn_cuda)
     target_link_libraries(tpid ${CUDA_LIBRARIES})
 endif()
-target_link_libraries(tpid dendro5 ${LAPACK_LIBRARIES} ${MPI_LIBRARIES} ${GSL_LIBRARIES} m)
+target_link_libraries(tpid dendro5 ${LAPACK_LIBRARIES} ${MPI_LIBRARIES} ${GSL_LIBRARIES} m dendro_git_version_and_date)
 
 

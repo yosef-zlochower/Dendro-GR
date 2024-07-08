@@ -17,16 +17,27 @@
 #include "rkBSSN.h"
 #include "sdc.h"
 #include "bssnCtx.h"
-
+#include <stdio.h>
+#include <time.h>
+void printtime(void){
+          time_t t = time(0);
+          struct tm tm = *localtime(&t);
+          printf("now: \n%d-%02d-%02d %02d:%02d:%02d\n", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+}
 
 int main (int argc, char** argv)
 {
     // 0- NUTS 1-UTS
-    unsigned int ts_mode=0;     
-    
+    unsigned int ts_mode=1;     
+
     if(argc<2)
     {
-        std::cout<<"Usage: "<<argv[0]<<"paramFile TSMode(0){0-Spatially Adaptive Time Stepping(SATS, "<<GRN<<"default"<<NRM<<") , 1- Uniform Time Stepping.  }"<<std::endl;
+        std::cout << "usage: " << argv[0] << " PARAM_FILE [TS_MODE]" << std::endl;
+        std::cout << std::endl << "options:" << std::endl;
+        std::cout << "  PARAM_FILE" << std::endl << "      Path to the parameter file (.json file)" << std::endl;
+        std::cout << "  TS_MODE" << std::endl << "      Time stepper mode." << std::endl;
+        std::cout << "        0 - Spatially Adaptive Time Stepping (SATS, Currently **NOT AVAILABLE**)" << std::endl;
+        std::cout << "        1 - Uniform Time Stepping (UTS, " << GRN << "default" << NRM << ")" << std::endl;
         return 0;
     }
         
@@ -104,6 +115,9 @@ int main (int argc, char** argv)
 
     }
 
+    std::vector<std::string> arg_s(argv, argv+argc);
+    bssn:printGitInformation(rank, arg_s);
+
     //1 . read the parameter file.
     if(!rank) std::cout<<" reading parameter file :"<<argv[1]<<std::endl;
     bssn::readParamFile(argv[1],comm);
@@ -133,6 +147,7 @@ int main (int argc, char** argv)
     std::function<void(double,double,double,double*)> f_init=[](double x,double y,double z,double*var){bssn::initialDataFunctionWrapper(x,y,z,var);};
     std::function<double(double,double,double)> f_init_alpha=[](double x,double y,double z){ double var[24]; bssn::initialDataFunctionWrapper(x,y,z,var); return var[0];};
     //std::function<void(double,double,double,double*)> f_init=[](double x,double y,double z,double*var){bssn::KerrSchildData(x,y,z,var);};
+    std::function<void(double,double,double,double*)> f_init_flat = [](double x, double y, double z, double* var){bssn::minkowskiInitialData(x, y, z, var);};
 
     const unsigned int interpVars=bssn::BSSN_NUM_VARS;
     unsigned int varIndex[interpVars];
@@ -167,7 +182,18 @@ int main (int argc, char** argv)
           MPI_Abort(comm,0);
           
         }
-        function2Octree(f_init,bssn::BSSN_NUM_VARS,varIndex,interpVars,tmpNodes,(f2olmin-MAXDEAPTH_LEVEL_DIFF-2),bssn::BSSN_WAVELET_TOL,bssn::BSSN_ELE_ORDER,comm);
+
+        std::function<void(double, double, double, double*)> *f_init_use;
+
+        // TODO: Need to add some custom logic here to determine if function2Octree should use flat initialization or 
+        //
+        if (true) {
+            f_init_use = &f_init;
+        } else {
+            f_init_use = &f_init_flat;
+        }
+
+        function2Octree(*f_init_use,bssn::BSSN_NUM_VARS,varIndex,interpVars,tmpNodes,(f2olmin-MAXDEAPTH_LEVEL_DIFF-2),bssn::BSSN_WAVELET_TOL,bssn::BSSN_ELE_ORDER,comm);
         
     }
 
@@ -231,6 +257,9 @@ int main (int argc, char** argv)
         fclose(f);
       }
       const double init_done_time  = MPI_Wtime();
+      double wall_interval_start = init_done_time;
+      double sim_interval_start = ets->curr_time();
+      const double init_time = ets->curr_time();
 
       while(ets->curr_time() < bssn::BSSN_RK_TIME_END)
       {
@@ -282,13 +311,13 @@ int main (int argc, char** argv)
 
         if((step % bssn::BSSN_GW_EXTRACT_FREQ) == 0 )
         {
-          if(!rank_global)
+          if(!rank_global){
             std::cout<<"[ETS] : Executing step :  "<<ets->curr_step()<<"\tcurrent time :"<<ets->curr_time()<<"\t dt:"<<ets->ts_size()<<"\t"<<std::endl;
-          
+	    printtime();
+	  }
           bssnCtx->terminal_output();  
           bssnCtx->write_vtu();
           bssnCtx->evolve_bh_loc(bssnCtx->get_evolution_vars(),ets->ts_size()*bssn::BSSN_GW_EXTRACT_FREQ);
-
         }
         
         if( (step % bssn::BSSN_CHECKPT_FREQ) == 0 )
@@ -313,13 +342,23 @@ int main (int argc, char** argv)
         {
           break;
         }
+        if( (step % bssn::BSSN_REMESH_TEST_FREQ) == 0 )
+	{
+	  const double current_wall_time = MPI_Wtime();
+          if(!(ets->get_global_rank()))
+          {
+            std::cout<<"current simulation time and run speed (M / hour) : "<< ets->curr_time()<<" "<<(ets->curr_time() - sim_interval_start) / (current_wall_time - wall_interval_start) * 3600 << std::endl;
+          }
+	  wall_interval_start = current_wall_time;
+	  sim_interval_start = ets->curr_time();
+	}	
       }
 
       if(!(ets->get_global_rank()))
       {
         const double current_time = MPI_Wtime();
         std::cout<<" ETS total evolution time (hours) : "<< (current_time - init_done_time)/3600 << std::endl;
-        std::cout<<" ETS run speed (M / hour) : "<< ets->curr_time() / (current_time - init_done_time) * 3600 << std::endl;
+        std::cout<<" ETS average run speed (M / hour) : "<< (ets->curr_time() - init_time) / (current_time - init_done_time) * 3600 << std::endl;
       }
       
 
