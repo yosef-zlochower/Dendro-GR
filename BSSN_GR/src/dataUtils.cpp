@@ -205,7 +205,6 @@ namespace bssn
 
     bool isRemeshSiSCombination(ot::Mesh* pMesh, const Point* bhLoc, const double **unzippedVec, const unsigned int * varIds, const unsigned int numVars,std::function<double(double,double,double,double*)>wavelet_tol, double amr_coarse_fac)
     {
-
         const unsigned int eleLocalBegin = pMesh->getElementLocalBegin();
         const unsigned int eleLocalEnd = pMesh->getElementLocalEnd();
         bool isOctChange=false;
@@ -221,14 +220,10 @@ namespace bssn
                 refine_flags[ele-eleLocalBegin] = refine_flags_WAMR[ele-eleLocalBegin];
               }
             }
-            
             isOctChange = pMesh->setMeshRefinementFlags(refine_flags);
-
         }
-
         MPI_Allreduce(&isOctChange,&isOctChange_g,1,MPI_CXX_BOOL,MPI_LOR,pMesh->getMPIGlobalCommunicator());
         return isOctChange_g;
-        
     }
 
     std::vector<unsigned int> isRemeshSinSHelper(ot::Mesh* pMesh, const Point* bhLoc)
@@ -281,49 +276,47 @@ namespace bssn
                 const double rp = std::min(rp1, rp2);
                 int last_radii_index = bssn::BSSN_BOX_NUM_LEVELS[punct_id]-1;
                 unsigned int refinement_modes_num = bssn::BSSN_REFINEMENT_NUM_MODES;
-                //FILE *fp;
-                //fp = fopen("out_file.txt", "a");
                 if (bssn::BSSN_REFINEMENT_MODE_COMBINATION_ORDER[0] == 4 & rp < bssn_box_radii_at[punct_id][last_radii_index]) 
                 {
+                    // SiS outer
                     refine_flags[ele-eleLocalBegin] = OCT_IGNORE;
-                    fprintf(stderr, "%.2f SoWi OCT_IGNORE TRIGGERED\n", rp);
                     continue;
                 }     
                 else if (bssn::BSSN_REFINEMENT_MODE_COMBINATION_ORDER[refinement_modes_num-1] == 4 & rp > bssn_box_radii_at[punct_id][0]) 
                 {
+                    // SiS inner            
                     refine_flags[ele-eleLocalBegin] = OCT_IGNORE;
-                    fprintf(stderr, "%.2f WoSi OCT_IGNORE TRIGGERED\n", rp);
+                    continue;
+                }
+                else if (rp < bssn_box_radii_at[punct_id][last_radii_index] | rp > bssn_box_radii_at[punct_id][0])
+                {
+                    // SiS in the middle of two WAMR grids
+                    refine_flags[ele-eleLocalBegin] = OCT_IGNORE;
                     continue;
                 } 
                 for (int level = 0; level < bssn::BSSN_BOX_NUM_LEVELS[punct_id]; level ++)
                 {
                   if (rp >= bssn_box_radii_at[punct_id][level])
                   {
-                    fprintf(stderr, "%.2f %d %d %d\n", rp, pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF, bssn::BSSN_MINDEPTH_SIS + level, level);
                     if ( ( pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1) > bssn::BSSN_MINDEPTH_SIS + level )
                     {
                         refine_flags[ele-eleLocalBegin] = OCT_COARSE;
-                        fprintf(stderr, "%.2f OCT_COARSE TRIGGERED\n", rp);
                     }
                     else if  ( ( pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1) < bssn::BSSN_MINDEPTH_SIS + level )
                     {
                         refine_flags[ele-eleLocalBegin] = OCT_SPLIT;
-                        fprintf(stderr, "%.2f OCT_SPLIT TRIGGERED\n", rp); 
                     }
                     else
                     {
                         refine_flags[ele-eleLocalBegin] = OCT_NO_CHANGE;
-                        fprintf(stderr, "%.2f OCT_NO_CHANGE TRIGGERED\n", rp); 
                     }
 
                     break;
                   }
                 } 
-                //fprintf(fp, "%.2f %d %d %d\n", rp, pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF, bssn::BSSN_MINDEPTH_SIS + level, level);
-                //fclose(fp);  
-                return refine_flags;
             }
         }
+        return refine_flags;
     }
 
     
