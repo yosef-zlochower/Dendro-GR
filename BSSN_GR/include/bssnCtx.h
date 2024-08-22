@@ -142,6 +142,9 @@ class BSSNCtx : public ts::Ctx<BSSNCtx, DendroScalar, unsigned int> {
 
     /**@brief: restore from check point*/
     int restore_checkpt();
+ 
+    /**@brief: compute constraints*/
+    int compute_constraints();
 
     /**@brief: should be called for free up the contex memory. */
     int finalize();
