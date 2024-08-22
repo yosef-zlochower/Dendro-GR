@@ -492,6 +492,37 @@ namespace bssn
         if (parFile.contains("AEH_BETA"))
             AEH::AEH_BETA = parFile["AEH_BETA"].as_floating();
 
+        if (parFile.contains("BSSN_BOX_NUM_LEVELS")) {
+            for(unsigned int i=0;i<2;i++) {
+                bssn::BSSN_REFINE_VARIABLE_INDICES[i]=parFile["BSSN_BOX_NUM_LEVELS"][i].as_integer();
+        } else if (bssn::BSSN_REFINEMENT_MODE == SPHERE_IN_SPHERE) {
+            fprintf(stderr, "You must specify BSSN_BOX_NUM_LEVELS\n");
+            exit(-1);
+        }
+
+        if (parFile.contains("BSSN_BOX_TYPE")) {
+            bssn::BSSN_BOX_TYPE = parFile["BSSN_BOX_TYPE"].as_integer();
+        }
+        if (parFile.contains("WALL_TIME")) {
+            bssn::WALL_TIME = parFile["WALL_TIME"].as_integer();
+        }
+
+        if (parFile.contains("BSSN_BOX_RADII_1")) {
+            for (unsigned int i = 0; i < bssn::BSSN_BOX_NUM_LEVELS[0]; i++)
+                bssn::BSSN_BOX_RADII_1[i] = parFile["BSSN_BOX_RADII_1"][i].as_floating();
+        } else if (bssn::BSSN_REFINEMENT_MODE == SPHERE_IN_SPHERE) {
+            fprintf(stderr, "You must specify BSSN_BOX_RADII_1\n");
+            exit(-1);
+        }
+
+        if (parFile.contains("BSSN_BOX_RADII_2")) {
+            for (unsigned int i = 0; i < bssn::BSSN_BOX_NUM_LEVELS[1]; i++)
+                bssn::BSSN_BOX_RADII_2[i] = parFile["BSSN_BOX_RADII_2"][i].as_floating();
+        } else if (bssn::BSSN_REFINEMENT_MODE == SPHERE_IN_SPHERE) {
+            fprintf(stderr, "You must specify BSSN_BOX_RADII_2\n");
+            exit(-1);
+        }
+
         MPI_Barrier(comm);
     }
 
