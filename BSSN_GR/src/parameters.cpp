@@ -495,6 +495,7 @@ namespace bssn
         if (parFile.contains("BSSN_BOX_NUM_LEVELS")) {
             for(unsigned int i=0;i<2;i++) {
                 bssn::BSSN_REFINE_VARIABLE_INDICES[i]=parFile["BSSN_BOX_NUM_LEVELS"][i].as_integer();
+            }
         } else if (bssn::BSSN_REFINEMENT_MODE == SPHERE_IN_SPHERE) {
             fprintf(stderr, "You must specify BSSN_BOX_NUM_LEVELS\n");
             exit(-1);
