@@ -15,6 +15,8 @@
 #include "dendro.h"
 #include "memory_pool.h"
 
+#include <toml.hpp>
+
 
 namespace bssn
 {
@@ -369,6 +371,7 @@ namespace bssn
         const unsigned int BSSN_NUM_DERIVS= 138;
     #endif
 
+    void readParamTOMLFile(const char * fName, MPI_Comm comm);
 
 }
 
@@ -457,5 +460,37 @@ namespace GW
     /**@brief values for l modes in SWSH*/
     extern unsigned int BSSN_GW_L_MODES[BSSN_GW_MAX_LMODES];
     
+    
+}
+
+namespace AEH
+{
+    /**@brief lmax used for AH surface parameterization*/
+    extern unsigned int AEH_LMAX;
+    
+    /**@brief quadrature points in the theta direction*/
+    extern unsigned int AEH_Q_THETA;
+    
+    /**@brief quadrature points in the phi direction*/
+    extern unsigned int AEH_Q_PHI;
+    
+    /**@brief number of max. iterations for AH solver*/
+    extern unsigned int AEH_MAXITER;
+    
+    /**@brief absolute tolerance for AH convergence*/
+    extern double AEH_ATOL;
+    
+    /**@brief relative tolerance for AH convergence*/
+    extern double AEH_RTOL;
+
+    extern unsigned int AEH_SOLVER_FREQ;
+
+    /***@brief AEH update A = (alpha / (lmax * (lmax + 1)))  + beta  and B= beta/alpha and dlambda = A / (1 + B * l * (l + 1) ) */
+    extern double AEH_ALPHA;
+
+    /***@brief AEH update A = (alpha / (lmax * (lmax + 1)))  + beta  and B= beta/alpha and dlambda = A / (1 + B * l * (l + 1) ) */
+    extern double AEH_BETA;
+
+
     
 }
