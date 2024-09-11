@@ -1162,11 +1162,11 @@ bool BSSNCtx::is_remesh() {
 
     MPI_Comm comm = m_uiMesh->getMPIGlobalCommunicator();
 
-    // DVec& m_evar = m_var[VL::CPU_EV];
-    // DVec& m_evar_unz = m_var[VL::CPU_EV_UZ_IN];
+    DVec& m_evar = m_var[VL::CPU_EV];
+    DVec& m_evar_unz = m_var[VL::CPU_EV_UZ_IN];
 
-    DVec& m_evar = m_var[VL::CPU_CV];
-    DVec& m_evar_unz = m_var[VL::CPU_CV_UZ_IN];
+    // DVec& m_evar = m_var[VL::CPU_CV];
+    // DVec& m_evar_unz = m_var[VL::CPU_CV_UZ_IN];
 
     this->unzip(m_evar, m_evar_unz, bssn::BSSN_ASYNC_COMM_K);
 
