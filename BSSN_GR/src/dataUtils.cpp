@@ -303,17 +303,17 @@ namespace bssn
                     if ( ( pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1) > bssn::BSSN_MINDEPTH_SIS + level )
                     {
                         refine_flags[ele-eleLocalBegin] = OCT_COARSE;
-                        fprintf(stderr, "%.2f OCT_COARSE TRIGGERED\n", rp);
+                        //fprintf(stderr, "%.2f OCT_COARSE TRIGGERED\n", rp);
                     }
                     else if  ( ( pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1) < bssn::BSSN_MINDEPTH_SIS + level )
                     {
                         refine_flags[ele-eleLocalBegin] = OCT_SPLIT;
-                        fprintf(stderr, "%.2f OCT_SPLIT TRIGGERED\n", rp); 
+                        //fprintf(stderr, "%.2f OCT_SPLIT TRIGGERED\n", rp); 
                     }
                     else
                     {
                         refine_flags[ele-eleLocalBegin] = OCT_NO_CHANGE;
-                        fprintf(stderr, "%.2f OCT_NO_CHANGE TRIGGERED\n", rp); 
+                        //fprintf(stderr, "%.2f OCT_NO_CHANGE TRIGGERED\n", rp); 
                     }
 
                     break;
@@ -321,9 +321,10 @@ namespace bssn
                 } 
                 //fprintf(fp, "%.2f %d %d %d\n", rp, pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF, bssn::BSSN_MINDEPTH_SIS + level, level);
                 //fclose(fp);  
-                return refine_flags;
             }
+             
         }
+        return refine_flags;
     }
 
     
