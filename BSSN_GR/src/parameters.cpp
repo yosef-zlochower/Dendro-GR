@@ -339,6 +339,9 @@ namespace bssn
         if(parFile.contains("BSSN_MINDEPTH"))
             bssn::BSSN_MINDEPTH =parFile["BSSN_MINDEPTH"].as_integer();
 
+        if(parFile.contains("BSSN_MINDEPTH_SIS"))
+            bssn::BSSN_MINDEPTH_SIS = parFile["BSSN_MINDEPTH_SIS"].as_integer(); 
+
         if(parFile.contains("BSSN_BH1_CONSTRAINT_R"))
             bssn::BSSN_BH1_CONSTRAINT_R =parFile["BSSN_BH1_CONSTRAINT_R"].as_floating();
 
@@ -507,6 +510,17 @@ namespace bssn
         if (parFile.contains("BSSN_BOX_TYPE")) {
             bssn::BSSN_BOX_TYPE = parFile["BSSN_BOX_TYPE"].as_integer();
         }
+
+        if (parFile.contains("BSSN_REFINEMENT_NUM_MODES")) {
+            bssn::BSSN_REFINEMENT_NUM_MODES = parFile["BSSN_REFINEMENT_NUM_MODES"].as_integer();
+        }
+
+        if (parFile.contains("BSSN_REFINEMENT_MODE_COMBINATION_ORDER")) {
+            for(unsigned int i=0;i<2;i++) {
+                bssn::BSSN_REFINEMENT_MODE_COMBINATION_ORDER[i] = parFile["BSSN_REFINEMENT_MODE_COMBINATION_ORDER"][i].as_integer();
+            }
+        }
+
         if (parFile.contains("WALL_TIME")) {
             bssn::WALL_TIME = parFile["WALL_TIME"].as_integer();
         }
