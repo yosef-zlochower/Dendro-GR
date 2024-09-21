@@ -281,46 +281,36 @@ namespace bssn
                 const double rp = std::min(rp1, rp2);
                 int last_radii_index = bssn::BSSN_BOX_NUM_LEVELS[punct_id]-1;
                 unsigned int refinement_modes_num = bssn::BSSN_REFINEMENT_NUM_MODES;
-                //FILE *fp;
-                //fp = fopen("out_file.txt", "a");
                 if (bssn::BSSN_REFINEMENT_MODE_COMBINATION_ORDER[0] == 4 & rp < bssn_box_radii_at[punct_id][last_radii_index]) 
                 {
                     refine_flags[ele-eleLocalBegin] = OCT_IGNORE;
-                    fprintf(stderr, "%.2f SoWi OCT_IGNORE TRIGGERED\n", rp);
                     continue;
                 }     
                 else if (bssn::BSSN_REFINEMENT_MODE_COMBINATION_ORDER[refinement_modes_num-1] == 4 & rp > bssn_box_radii_at[punct_id][0]) 
                 {
                     refine_flags[ele-eleLocalBegin] = OCT_IGNORE;
-                    fprintf(stderr, "%.2f WoSi OCT_IGNORE TRIGGERED\n", rp);
                     continue;
                 } 
                 for (int level = 0; level < bssn::BSSN_BOX_NUM_LEVELS[punct_id]; level ++)
                 {
                   if (rp >= bssn_box_radii_at[punct_id][level])
                   {
-                    fprintf(stderr, "%.2f %d %d %d\n", rp, pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF, bssn::BSSN_MINDEPTH_SIS + level, level);
                     if ( ( pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1) > bssn::BSSN_MINDEPTH_SIS + level )
                     {
                         refine_flags[ele-eleLocalBegin] = OCT_COARSE;
-                        //fprintf(stderr, "%.2f OCT_COARSE TRIGGERED\n", rp);
                     }
                     else if  ( ( pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1) < bssn::BSSN_MINDEPTH_SIS + level )
                     {
                         refine_flags[ele-eleLocalBegin] = OCT_SPLIT;
-                        //fprintf(stderr, "%.2f OCT_SPLIT TRIGGERED\n", rp); 
                     }
                     else
                     {
                         refine_flags[ele-eleLocalBegin] = OCT_NO_CHANGE;
-                        //fprintf(stderr, "%.2f OCT_NO_CHANGE TRIGGERED\n", rp); 
                     }
 
                     break;
                   }
                 } 
-                //fprintf(fp, "%.2f %d %d %d\n", rp, pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF, bssn::BSSN_MINDEPTH_SIS + level, level);
-                //fclose(fp);  
             }
              
         }
