@@ -54,6 +54,9 @@ namespace bssn
     bool isRemeshSiSCombination(ot::Mesh* pMesh, const Point* bhLoc, const double **unzippedVec,const unsigned int * varIds,const unsigned int numVars,std::function<double(double,double,double,double*)>wavelet_tol,double amr_coarse_fac);
     std::vector<unsigned int> isRemeshSinSHelper(ot::Mesh* pMesh, const Point* bhLoc);
     std::vector<unsigned int> isReMeshWAMRHelper(ot::Mesh* pMesh, const double **unzippedVec,const unsigned int * varIds,const unsigned int numVars,std::function<double(double,double,double,double*)>wavelet_tol,double amr_coarse_fac);
+    bool isRemeshDeltaDeltaChi(ot::Mesh* pMesh, const Point* bhLoc, const double **unzippedVec, const unsigned int varId); 
+    std::vector<unsigned int> isRemeshDeltaDeltaChiHelper(ot::Mesh* pMesh, const double **unzippedVec, const unsigned int varId); 
+    std::vector<unsigned int> isRemeshInitSiSHelper(ot::Mesh* pMesh, const Point* bhLoc); 
     /**
      * @brief refine only based on the alpha variable event horizon. 
      * 

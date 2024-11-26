@@ -167,8 +167,11 @@ namespace bssn
     unsigned int BSSN_REFINEMENT_NUM_MODES = 2;
     unsigned int BSSN_REFINEMENT_MODE_COMBINATION_ORDER[2];
     unsigned int BSSN_BOX_NUM_LEVELS[2];
+    unsigned int BSSN_CHI_NUM_VALUES = 9;
     double BSSN_BOX_RADII_1[BSSN_BOX_MAX_RADII];
     double BSSN_BOX_RADII_2[BSSN_BOX_MAX_RADII];
+    double BSSN_CHI_VALUES[BSSN_BOX_MAX_RADII];
+    
     unsigned int BSSN_BOX_TYPE = 0 ;
 
     void readParamTOMLFile(const char * fName, MPI_Comm comm) {
@@ -504,6 +507,11 @@ namespace bssn
             exit(-1);
         }
 
+	if (parFile.contains("BSSN_CHI_NUM_VALUES")) {
+            bssn::BSSN_CHI_NUM_VALUES=parFile["BSSN_CHI_NUM_VALUES"].as_integer();
+	}
+ 
+
         if (parFile.contains("BSSN_BOX_TYPE")) {
             bssn::BSSN_BOX_TYPE = parFile["BSSN_BOX_TYPE"].as_integer();
         }
@@ -525,6 +533,11 @@ namespace bssn
         } else if (bssn::BSSN_REFINEMENT_MODE == SPHERE_IN_SPHERE) {
             fprintf(stderr, "You must specify BSSN_BOX_RADII_2\n");
             exit(-1);
+        }
+
+	if (parFile.contains("BSSN_CHI_VALUES")) {
+            for (unsigned int i = 0; i < bssn::BSSN_CHI_NUM_VALUES; i++)
+                bssn::BSSN_CHI_VALUES[i] = parFile["BSSN_CHI_VALUES"][i].as_floating();
         }
 
         MPI_Barrier(comm);

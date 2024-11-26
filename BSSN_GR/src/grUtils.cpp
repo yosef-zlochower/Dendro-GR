@@ -364,6 +364,10 @@ void readParamJSONFile(const char* fName, MPI_Comm comm) {
         exit(-1);
     }
 
+    if (parFile.find("BSSN_CHI_NUM_VALUES") != parFile.end()) {
+        bssn::BSSN_CHI_NUM_VALUES = parFile["BSSN_CHI_NUM_VALUES"];
+    } 
+
     if (parFile.find("BSSN_BOX_TYPE") != parFile.end()) {
         bssn::BSSN_BOX_TYPE = parFile["BSSN_BOX_TYPE"];
     }
@@ -385,6 +389,11 @@ void readParamJSONFile(const char* fName, MPI_Comm comm) {
     } else if (bssn::BSSN_REFINEMENT_MODE == SPHERE_IN_SPHERE) {
         fprintf(stderr, "You must specify BSSN_BOX_RADII_2\n");
         exit(-1);
+    }
+
+    if (parFile.find("BSSN_CHI_VALUES") != parFile.end()) {
+        for (unsigned int i = 0; i < bssn::BSSN_CHI_NUM_VALUES; i++)
+            bssn::BSSN_CHI_VALUES[i] = parFile["BSSN_CHI_VALUES"][i];
     }
 
     BSSN_OCTREE_MAX[0] = (double)(1u << bssn::BSSN_MAXDEPTH);

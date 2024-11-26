@@ -1078,13 +1078,18 @@ bool BSSNCtx::is_remesh() {
     DVec& m_evar = m_var[VL::CPU_EV];
     DVec& m_evar_unz = m_var[VL::CPU_EV_UZ_IN];
 
-    // DVec& m_evar = m_var[VL::CPU_CV];
-    // DVec& m_evar_unz = m_var[VL::CPU_CV_UZ_IN];
+    DVec& m_cvar = m_var[VL::CPU_CV];
+    DVec& m_cvar_unz = m_var[VL::CPU_CV_UZ_IN];
 
     this->unzip(m_evar, m_evar_unz, bssn::BSSN_ASYNC_COMM_K);
+    this->unzip(m_cvar, m_cvar_unz, bssn::BSSN_ASYNC_COMM_K);
 
     DendroScalar* unzipVar[BSSN_NUM_VARS];
     m_evar_unz.to_2d(unzipVar);
+    DendroScalar* unzipcVar[BSSN_CONSTRAINT_NUM_VARS];
+    m_cvar_unz.to_2d(unzipcVar);
+
+    enum VAR_CONSTRAINT grad2_chi_varId = C_GRAD2_CHI_2NORM;
 
     unsigned int refineVarIds[bssn::BSSN_NUM_REFINE_VARS];
     for (unsigned int vIndex = 0; vIndex < bssn::BSSN_NUM_REFINE_VARS; vIndex++)
@@ -1126,6 +1131,8 @@ bool BSSNCtx::is_remesh() {
          isRefine = bssn::isRemeshSiSCombination(m_uiMesh, m_uiBHLoc, (const double**)unzipVar, refineVarIds,
                                bssn::BSSN_NUM_REFINE_VARS, waveletTolFunc,
                                bssn::BSSN_DENDRO_AMR_FAC);
+    } else if (bssn::BSSN_REFINEMENT_MODE == bssn::RefinementMode::DELTA_DELTA_CHI) {
+	 isRefine = bssn::isRemeshDeltaDeltaChi(m_uiMesh, m_uiBHLoc, (const double**)unzipcVar, grad2_chi_varId);
     } 
 
     return isRefine;

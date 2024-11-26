@@ -201,7 +201,212 @@ namespace bssn
       }
   
 
-    } 
+    }
+
+    bool isRemeshDeltaDeltaChi(ot::Mesh* pMesh, const Point* bhLoc, const double **unzippedVec, const unsigned int varId)
+    {
+        const unsigned int eleLocalEnd = pMesh->getElementLocalEnd();
+        bool isOctChange=false;
+        bool isOctChange_g =false;
+	std::vector<unsigned int> refine_flags;
+
+        FILE *fp;
+        // fp = fopen("RefinementOutput.txt", "a");
+        if(pMesh->isActive()){
+	    // if at initial frame use SinS
+	    // else use chi
+	    if(bssn::BSSN_CURRENT_RK_STEP == 0){
+                refine_flags = bssn::isRemeshSinSHelper(pMesh, bhLoc);
+		// fprintf(stderr, "%s", "SiS Refinement Helper Triggered\n");
+            }
+	    else{
+                refine_flags = bssn::isRemeshDeltaDeltaChiHelper(pMesh, unzippedVec, varId);
+		// fprintf(stderr, "%s", "DeltaDeltaChi Refinement Helper Triggered\n");
+	    }
+	    
+            isOctChange = pMesh->setMeshRefinementFlags(refine_flags);
+        }
+
+        MPI_Allreduce(&isOctChange,&isOctChange_g,1,MPI_CXX_BOOL,MPI_LOR,pMesh->getMPIGlobalCommunicator());
+	//fclose(fp);
+        return isOctChange_g;	
+    }
+    
+    std::vector<unsigned int> isRemeshDeltaDeltaChiHelper(ot::Mesh* pMesh, const double **unzippedVec, const unsigned int varId)
+    {    
+        const unsigned int eleLocalBegin = pMesh->getElementLocalBegin();
+        const unsigned int eleLocalEnd = pMesh->getElementLocalEnd();
+        bool isOctChange=false;
+        bool isOctChange_g =false;
+        
+        // const double refinement_radii[] = {220, 110, 55 ,25, 10, 5 ,2, 1,0};
+        // const int num_radii = sizeof(refinement_radii) / sizeof(double);
+        
+        std::vector<unsigned int> refine_flags;
+        if(pMesh->isActive())
+        {
+            ot::TreeNode * pNodes = (ot::TreeNode*) &(*(pMesh->getAllElements().begin()));
+            
+            const std::vector<ot::Block>& blkList = pMesh->getLocalBlockList();
+            unsigned int sz[3];
+            unsigned int ei[3];
+            refine_flags.resize(pMesh->getNumLocalMeshElements(),OCT_NO_CHANGE);
+            const unsigned int eOrder = pMesh->getElementOrder();
+            // refine test
+            for(unsigned int b=0; b< blkList.size(); b++)
+            {
+                const ot::TreeNode blkNode = blkList[b].getBlockNode();
+
+                sz[0]=blkList[b].getAllocationSzX();
+                sz[1]=blkList[b].getAllocationSzY();
+                sz[2]=blkList[b].getAllocationSzZ();
+
+                const unsigned int bflag = blkList[b].getBlkNodeFlag();
+                const unsigned int offset = blkList[b].getOffset();
+
+                const unsigned int regLev=blkList[b].getRegularGridLev();
+                const unsigned int eleIndexMax=(1u<<(regLev-blkNode.getLevel()))-1;
+                const unsigned int eleIndexMin=0;
+
+                for(unsigned int ele = blkList[b].getLocalElementBegin(); ele< blkList[b].getLocalElementEnd(); ele++)
+                {
+                    ei[0]=(pNodes[ele].getX()-blkNode.getX())>>(m_uiMaxDepth-regLev);
+                    ei[1]=(pNodes[ele].getY()-blkNode.getY())>>(m_uiMaxDepth-regLev);
+                    ei[2]=(pNodes[ele].getZ()-blkNode.getZ())>>(m_uiMaxDepth-regLev);
+
+                    if((bflag &(1u<<OCT_DIR_LEFT)) && ei[0]==eleIndexMin)   continue;
+                    if((bflag &(1u<<OCT_DIR_DOWN)) && ei[1]==eleIndexMin)   continue;
+                    if((bflag &(1u<<OCT_DIR_BACK)) && ei[2]==eleIndexMin)   continue;
+
+                    if((bflag &(1u<<OCT_DIR_RIGHT)) && ei[0]==eleIndexMax)  continue;
+                    if((bflag &(1u<<OCT_DIR_UP)) && ei[1]==eleIndexMax)     continue;
+                    if((bflag &(1u<<OCT_DIR_FRONT)) && ei[2]==eleIndexMax)  continue;
+
+                    unsigned int rf = OCT_COARSE;
+		    // refine test.
+                    int level = pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1 - bssn::BSSN_MINDEPTH_SIS;
+                    for(unsigned int k=3; k< eOrder+1 +   3; k++)
+                     for(unsigned int j=3; j< eOrder+1 +  3; j++)
+                      for(unsigned int i=3; i< eOrder+1 + 3; i++)
+                      {
+                           double D2Chi = unzippedVec[varId][offset + (ei[2]*eOrder + k)*sz[0]*sz[1] + (ei[1]*eOrder + j)*sz[0] + (ei[0]*eOrder + i)];
+                           double logabsD2Chi = log10(fabs(D2Chi));
+			   int chi_index = 0;
+			   while(true)
+		           {
+			       if(bssn::BSSN_CHI_VALUES[chi_index] > logabsD2Chi)
+			       {
+			           break;
+			       }
+			       chi_index++;
+			   }
+			   if(level - chi_index == 0 && rf == OCT_COARSE)
+			   {
+                               rf = OCT_NO_CHANGE;
+			       // exit and no change iff no refine
+			   }
+			   else if(level - chi_index < 0)
+			   {
+                               rf = OCT_SPLIT;
+			       // exit and refine
+		           }
+                      }
+		      refine_flags[ele] = rf;
+		 }
+
+            }
+
+        }
+        return refine_flags;
+
+    }
+ 
+
+    std::vector<unsigned int> isRemeshInitSiSHelper(ot::Mesh* pMesh, const Point* bhLoc)
+    {    
+        const unsigned int eleLocalBegin = pMesh->getElementLocalBegin();
+        const unsigned int eleLocalEnd = pMesh->getElementLocalEnd();
+        bool isOctChange=false;
+        bool isOctChange_g =false;
+        
+        // const double refinement_radii[] = {220, 110, 55 ,25, 10, 5 ,2, 1,0};
+        // const int num_radii = sizeof(refinement_radii) / sizeof(double);
+        
+        const double * bssn_box_radii_at[] = {bssn::BSSN_BOX_RADII_1, bssn::BSSN_BOX_RADII_2};
+
+        std::vector<unsigned int> refine_flags;
+        if(pMesh->isActive())
+        {
+
+            // if(!pMesh->getMPIRank())
+            //     std::cout<<"bh distance: "<<dBH<<std::endl;
+
+            const ot::TreeNode * pNodes = pMesh->getAllElements().data();
+
+            refine_flags.resize(pMesh->getNumLocalMeshElements(),OCT_NO_CHANGE);
+
+            // refine pass. 
+            for(unsigned int ele = eleLocalBegin; ele< eleLocalEnd; ele++)
+            {
+                const unsigned int ln = 1u<<(m_uiMaxDepth-pNodes[ele].getLevel());
+                unsigned int punct_id = 0;
+                 
+
+                const double x_min = pNodes[ele].minX();
+                const double y_min = pNodes[ele].minY();
+                const double z_min = pNodes[ele].minZ();
+
+                const double x_max = pNodes[ele].minX() + ln;
+                const double y_max = pNodes[ele].minY() + ln;
+                const double z_max = pNodes[ele].minZ() + ln;
+                const Point oct_min = Point(x_min,y_min,z_min);
+                const Point oct_max = Point(x_max,y_max,z_max);
+                Point coord_min;
+                Point coord_max;
+                pMesh->octCoordToDomainCoord(oct_min,coord_min);
+                pMesh->octCoordToDomainCoord(oct_max,coord_max);
+         
+                const double rp1 = min_distance_cell_to_point(coord_min, coord_max, bhLoc[0]);
+                const double rp2 = min_distance_cell_to_point(coord_min, coord_max, bhLoc[1]);
+
+                if (rp1 < rp2)
+                {
+                    punct_id = 0;
+                }
+                else
+                {
+                    punct_id = 1;
+                }
+                const double rp = std::min(rp1, rp2);
+
+                for (int level = 0; level < bssn::BSSN_BOX_NUM_LEVELS[punct_id]; level ++)
+                {
+                  if (rp >= bssn_box_radii_at[punct_id][level])
+                  {
+                    if ( ( pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1) > bssn::BSSN_MINDEPTH_SIS + level )
+                    {
+                        refine_flags[ele-eleLocalBegin] = OCT_COARSE;
+                    }
+                    else if  ( ( pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1) < bssn::BSSN_MINDEPTH_SIS + level )
+                    {
+                        refine_flags[ele-eleLocalBegin] = OCT_SPLIT;
+                    }
+                    else
+                    {
+                        refine_flags[ele-eleLocalBegin] = OCT_NO_CHANGE;
+                    }
+
+                    break;
+                  }
+                }
+            }
+        }
+
+        return refine_flags;
+
+    }
+
+
 
     bool isRemeshSiSCombination(ot::Mesh* pMesh, const Point* bhLoc, const double **unzippedVec, const unsigned int * varIds, const unsigned int numVars,std::function<double(double,double,double,double*)>wavelet_tol, double amr_coarse_fac)
     {

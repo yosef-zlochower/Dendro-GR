@@ -352,11 +352,17 @@ namespace bssn
     /***@brief: number of box levels for BH1 and BH2 respectively*/
     extern unsigned int BSSN_BOX_NUM_LEVELS[2];
 
+    /***@breif: number of DDchi contour values for each black hole*/
+    extern unsigned int BSSN_CHI_NUM_VALUES;
+
     /***@brief: box radii for BH1*/
     extern double BSSN_BOX_RADII_1[BSSN_BOX_MAX_RADII];
 
     /***@brief: box radii for BH2*/
     extern double BSSN_BOX_RADII_2[BSSN_BOX_MAX_RADII];
+
+    /***@brief: DDchi values for BH1*/
+    extern double BSSN_CHI_VALUES[BSSN_BOX_MAX_RADII];
 
     /***@brief: box shape*/
     extern unsigned int BSSN_BOX_TYPE;
