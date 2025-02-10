@@ -53,10 +53,10 @@ namespace bssn
     bool isRemeshSinS(ot::Mesh* pMesh, const Point* bhLoc);
     bool isRemeshSiSCombination(ot::Mesh* pMesh, const Point* bhLoc, const double **unzippedVec,const unsigned int * varIds,const unsigned int numVars,std::function<double(double,double,double,double*)>wavelet_tol,double amr_coarse_fac);
     std::vector<unsigned int> isRemeshSinSHelper(ot::Mesh* pMesh, const Point* bhLoc);
+    std::vector<unsigned int> isRemeshSinSInitHelper(ot::Mesh* pMesh, const Point* bhLoc);
     std::vector<unsigned int> isReMeshWAMRHelper(ot::Mesh* pMesh, const double **unzippedVec,const unsigned int * varIds,const unsigned int numVars,std::function<double(double,double,double,double*)>wavelet_tol,double amr_coarse_fac);
-    bool isRemeshDeltaDeltaChi(ot::Mesh* pMesh, const Point* bhLoc, const double **unzippedVec, const unsigned int varId); 
-    std::vector<unsigned int> isRemeshDeltaDeltaChiHelper(ot::Mesh* pMesh, const double **unzippedVec, const unsigned int varId); 
-    std::vector<unsigned int> isRemeshInitSiSHelper(ot::Mesh* pMesh, const Point* bhLoc); 
+    bool isRemeshDeltaDeltaChi(ot::Mesh* pMesh, const Point* bhLoc, const double **unzippedcVec, const unsigned int varId_D2chi, const double **unzippedVec, const unsigned int varId_chi); 
+    std::vector<unsigned int> isRemeshDeltaDeltaChiHelper(ot::Mesh* pMesh, const Point* bhLoc, const double **unzippedcVec, const unsigned int varId_D2chi, const double **unzippedVec, const unsigned int varId_chi); 
     /**
      * @brief refine only based on the alpha variable event horizon. 
      * 

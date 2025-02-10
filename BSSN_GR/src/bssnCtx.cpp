@@ -1090,6 +1090,7 @@ bool BSSNCtx::is_remesh() {
     m_cvar_unz.to_2d(unzipcVar);
 
     enum VAR_CONSTRAINT grad2_chi_varId = C_GRAD2_CHI_2NORM;
+    enum VAR chi_varId = U_CHI; 
 
     unsigned int refineVarIds[bssn::BSSN_NUM_REFINE_VARS];
     for (unsigned int vIndex = 0; vIndex < bssn::BSSN_NUM_REFINE_VARS; vIndex++)
@@ -1132,7 +1133,7 @@ bool BSSNCtx::is_remesh() {
                                bssn::BSSN_NUM_REFINE_VARS, waveletTolFunc,
                                bssn::BSSN_DENDRO_AMR_FAC);
     } else if (bssn::BSSN_REFINEMENT_MODE == bssn::RefinementMode::DELTA_DELTA_CHI) {
-	 isRefine = bssn::isRemeshDeltaDeltaChi(m_uiMesh, m_uiBHLoc, (const double**)unzipcVar, grad2_chi_varId);
+	 isRefine = bssn::isRemeshDeltaDeltaChi(m_uiMesh, m_uiBHLoc, (const double**)unzipcVar, grad2_chi_varId, (const double**)unzipVar, chi_varId);
     } 
 
     return isRefine;
