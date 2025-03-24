@@ -572,6 +572,80 @@ int BSSNCtx::init_grid() {
 
 int BSSNCtx::finalize() { return 0; }
 
+int BSSNCtx::calc_constraints() {
+    if (!m_uiMesh->isActive()) return 0;
+
+    if (!(m_uiMesh->getMPIRank())) {
+        std::cout << GRN << "=== Now Writing VTU Output Files! ===" << NRM << std::endl;
+    }
+
+    DVec& m_evar = m_var[VL::CPU_EV];
+    DVec& m_evar_unz = m_var[VL::CPU_EV_UZ_IN];
+    DVec& m_cvar = m_var[VL::CPU_CV];
+    DVec& m_cvar_unz = m_var[VL::CPU_CV_UZ_IN];
+
+    this->unzip(m_evar, m_evar_unz, BSSN_ASYNC_COMM_K);
+
+    DendroScalar* consUnzipVar[bssn::BSSN_CONSTRAINT_NUM_VARS];
+    DendroScalar* consVar[bssn::BSSN_CONSTRAINT_NUM_VARS];
+
+    DendroScalar* evolUnzipVar[bssn::BSSN_NUM_VARS];
+    DendroScalar* evolVar[bssn::BSSN_NUM_VARS];
+
+    m_evar_unz.to_2d(evolUnzipVar);
+    m_cvar_unz.to_2d(consUnzipVar);
+
+    m_evar.to_2d(evolVar);
+    m_cvar.to_2d(consVar);
+
+    const std::vector<ot::Block> blkList = m_uiMesh->getLocalBlockList();
+
+    unsigned int offset;
+    double ptmin[3], ptmax[3];
+    unsigned int sz[3];
+    unsigned int bflag;
+    double dx, dy, dz;
+    const Point pt_min(bssn::BSSN_COMPD_MIN[0], bssn::BSSN_COMPD_MIN[1],
+                       bssn::BSSN_COMPD_MIN[2]);
+    const Point pt_max(bssn::BSSN_COMPD_MAX[0], bssn::BSSN_COMPD_MAX[1],
+                       bssn::BSSN_COMPD_MAX[2]);
+    const unsigned int PW = bssn::BSSN_PADDING_WIDTH;
+
+    for (unsigned int blk = 0; blk < blkList.size(); blk++) {
+        offset = blkList[blk].getOffset();
+        sz[0] = blkList[blk].getAllocationSzX();
+        sz[1] = blkList[blk].getAllocationSzY();
+        sz[2] = blkList[blk].getAllocationSzZ();
+
+        bflag = blkList[blk].getBlkNodeFlag();
+
+        dx = blkList[blk].computeDx(pt_min, pt_max);
+        dy = blkList[blk].computeDy(pt_min, pt_max);
+        dz = blkList[blk].computeDz(pt_min, pt_max);
+
+        ptmin[0] = GRIDX_TO_X(blkList[blk].getBlockNode().minX()) - PW * dx;
+        ptmin[1] = GRIDY_TO_Y(blkList[blk].getBlockNode().minY()) - PW * dy;
+        ptmin[2] = GRIDZ_TO_Z(blkList[blk].getBlockNode().minZ()) - PW * dz;
+
+        ptmax[0] = GRIDX_TO_X(blkList[blk].getBlockNode().maxX()) + PW * dx;
+        ptmax[1] = GRIDY_TO_Y(blkList[blk].getBlockNode().maxY()) + PW * dy;
+        ptmax[2] = GRIDZ_TO_Z(blkList[blk].getBlockNode().maxZ()) + PW * dz;
+
+        physical_constraints(consUnzipVar, (const DendroScalar**)evolUnzipVar,
+                             offset, ptmin, ptmax, sz, bflag);
+    }
+
+    /*double consVecMin[bssn::BSSN_CONSTRAINT_NUM_VARS];
+    double consVecMax[bssn::BSSN_CONSTRAINT_NUM_VARS];*/
+    double constraintMaskedL2[bssn::BSSN_CONSTRAINT_NUM_VARS];
+    this->zip(m_cvar_unz, m_cvar);
+    m_uiMesh->readFromGhostBegin(m_cvar.get_vec_ptr(), m_cvar.get_dof());
+    m_uiMesh->readFromGhostEnd(m_cvar.get_vec_ptr(), m_cvar.get_dof());
+
+    return 0;
+}
+
+
 int BSSNCtx::write_vtu() {
     if (!m_uiMesh->isActive()) return 0;
 
@@ -721,6 +795,7 @@ int BSSNCtx::write_vtu() {
 
     return 0;
 }
+
 
 int BSSNCtx::write_checkpt() {
     if (!m_uiMesh->isActive()) return 0;
@@ -1090,7 +1165,6 @@ bool BSSNCtx::is_remesh() {
     m_cvar_unz.to_2d(unzipcVar);
 
     enum VAR_CONSTRAINT grad2_chi_varId = C_GRAD2_CHI_2NORM;
-    enum VAR chi_varId = U_CHI; 
 
     unsigned int refineVarIds[bssn::BSSN_NUM_REFINE_VARS];
     for (unsigned int vIndex = 0; vIndex < bssn::BSSN_NUM_REFINE_VARS; vIndex++)
@@ -1133,7 +1207,7 @@ bool BSSNCtx::is_remesh() {
                                bssn::BSSN_NUM_REFINE_VARS, waveletTolFunc,
                                bssn::BSSN_DENDRO_AMR_FAC);
     } else if (bssn::BSSN_REFINEMENT_MODE == bssn::RefinementMode::DELTA_DELTA_CHI) {
-	 isRefine = bssn::isRemeshDeltaDeltaChi(m_uiMesh, m_uiBHLoc, (const double**)unzipcVar, grad2_chi_varId, (const double**)unzipVar, chi_varId);
+	 isRefine = bssn::isRemeshDeltaDeltaChi(m_uiMesh, m_uiBHLoc, (const double**)unzipcVar, grad2_chi_varId, (const double**)unzipVar, bssn::VAR::U_CHI);
     } 
 
     return isRefine;

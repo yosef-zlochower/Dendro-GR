@@ -215,27 +215,26 @@ namespace bssn
 
         if(pMesh->isActive())
 	{
-	    if(bssn::BSSN_CURRENT_RK_STEP <= 1)
+	    if(bssn::BSSN_CURRENT_RK_STEP == 0)
 	    {
 		refine_flags = bssn::isRemeshSinSInitHelper(pMesh, bhLoc);
             }
 	    else
 	    {
-                std::vector<unsigned int> refine_flags = bssn::isRemeshDeltaDeltaChiHelper(pMesh, bhLoc, unzippedcVec, varId_D2chi, unzippedVec, varId_chi);
+                refine_flags = bssn::isRemeshDeltaDeltaChiHelper(pMesh, bhLoc, unzippedcVec, varId_D2chi, unzippedVec, varId_chi);
 	    }
             isOctChange = pMesh->setMeshRefinementFlags(refine_flags);
+	    
         }
         MPI_Allreduce(&isOctChange,&isOctChange_g,1,MPI_CXX_BOOL,MPI_LOR,pMesh->getMPIGlobalCommunicator());
         return isOctChange_g;	
     }
 
-    std::vector<unsigned int> isRemeshDeltaDeltaChiHelper(ot::Mesh* pMesh, const Point* bhLoc, const double **unzippedcVec, const unsigned int varId_D2chi, const double **unzippedVec, const unsigned int varId_chi)
+    std::vector<unsigned int> isRemeshDeltaDeltaChiHelper(ot::Mesh* pMesh, const Point* bhLoc, const double **unzippedcVec, const unsigned int varId_D2chi, const double **unzippedVec, unsigned int varId_chi)
     {    
         const unsigned int eleLocalBegin = pMesh->getElementLocalBegin();
         bool isOctChange=false;
         bool isOctChange_g =false;
-
-	std::cerr<<"D2chi norm value: "<<**unzippedVec<<std::endl;
 
         std::vector<unsigned int> refine_flags;
         if(pMesh->isActive())
@@ -246,9 +245,9 @@ namespace bssn
             unsigned int sz[3];
             unsigned int ei[3];
             refine_flags.resize(pMesh->getNumLocalMeshElements(),OCT_NO_CHANGE);
-	    std::cerr<<"Size of refine_flags: "<<pMesh->getNumLocalMeshElements()<<std::endl;
             const unsigned int eOrder = pMesh->getElementOrder();
             // refine test
+            std::cout<<"BEGIN ASSIGNING REFIE_FLAGS "<<std::endl;
             for(unsigned int b=0; b< blkList.size(); b++)
             {
                 const ot::TreeNode blkNode = blkList[b].getBlockNode();
@@ -263,7 +262,6 @@ namespace bssn
                 const unsigned int regLev=blkList[b].getRegularGridLev();
                 const unsigned int eleIndexMax=(1u<<(regLev-blkNode.getLevel()))-1;
                 const unsigned int eleIndexMin=0;
-
                 for(unsigned int ele = blkList[b].getLocalElementBegin(); ele< blkList[b].getLocalElementEnd(); ele++)
                 {
                     ei[0]=(pNodes[ele].getX()-blkNode.getX())>>(m_uiMaxDepth-regLev);
@@ -277,53 +275,62 @@ namespace bssn
                     if((bflag &(1u<<OCT_DIR_RIGHT)) && ei[0]==eleIndexMax)  continue;
                     if((bflag &(1u<<OCT_DIR_UP)) && ei[1]==eleIndexMax)     continue;
                     if((bflag &(1u<<OCT_DIR_FRONT)) && ei[2]==eleIndexMax)  continue;
+                    
+                    int level = 1 + pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF;
 
-                    int level = pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF + 1 - bssn::BSSN_MINDEPTH_SIS;
-                    unsigned int rf = OCT_COARSE;
 		    // refine test
+		    int num_coarse = 0;
+	            int num_no_change = 0;
+                    int num_split = 0;
+		    unsigned int rf = OCT_COARSE;
                     for(unsigned int k=3; k< eOrder+1 +   3; k++)
                      for(unsigned int j=3; j< eOrder+1 +  3; j++)
                       for(unsigned int i=3; i< eOrder+1 + 3; i++)
-                      {
+		      {
                         double D2Chi = unzippedcVec[varId_D2chi][offset + (ei[2]*eOrder + k)*sz[0]*sz[1] + (ei[1]*eOrder + j)*sz[0] + (ei[0]*eOrder + i)];
-			std::cerr<<"value of D2Chi: "<<D2Chi<<std::endl;
 		        double chi = unzippedVec[varId_chi][offset + (ei[2]*eOrder + k)*sz[0]*sz[1] + (ei[1]*eOrder + j)*sz[0] + (ei[0]*eOrder + i)];
-
-                        double abschiExpression = fabs(D2Chi/pow(chi,2));
-			std::cerr<<"value of D2Chi expression:: "<<abschiExpression<<std::endl;
-		        int chi_index = 0;
+                        double LogAbsChiExpression = log10(fabs(D2Chi/pow(chi,2)));
 			// change for loop
+			int chi_index = bssn::BSSN_CHI_NUM_VALUES;
                  	while(true)
 		        {
-		          if(abschiExpression <= bssn::BSSN_CHI_VALUES[chi_index])
+	                  chi_index--;
+		          if(LogAbsChiExpression > bssn::BSSN_CHI_VALUES[chi_index])
 			  {
 			      break;
 			  }
-			  chi_index++;
-			  if(chi_index > bssn::BSSN_CHI_NUM_VALUES - 1)
+			  if(chi_index < 0)
 	                  {
-		            std::cerr<<"chi_index too large: "<<chi_index<<", max allowed: "<<bssn::BSSN_CHI_NUM_VALUES<<std::endl; 
+		            std::cerr<<"chi reference index is negative: "<<chi_index<<std::endl; 
 			    MPI_Abort(MPI_COMM_WORLD, -1);
 	                  }
 	                }
-			if(level < chi_index)
+			if(level < chi_index + bssn::BSSN_MINDEPTH_SIS)
 			{
-			    rf = OCT_SPLIT;
-			    break;
+		          num_split++;	    
                         }
-			else if(level == chi_index) 
+			else if(level == chi_index + bssn::BSSN_MINDEPTH_SIS) 
 		        {
-                            rf = OCT_NO_CHANGE;
-			    continue;
+                          num_no_change++; 
 			}
-                      }
-		      std::cerr<<"refine flag: "<<rf<<std::endl;
-		      std::cerr<<"ele: "<<ele<<" eleLocalBegini: "<<eleLocalBegin<<std::endl;
-		      refine_flags.at(ele-eleLocalBegin) = rf;
-		 }
+			else
+	                {
+		          num_coarse++;
+			}
+		      }
+		    if(num_no_change >= num_coarse & num_no_change > num_split)
+		    {
+		      rf = OCT_NO_CHANGE;
+		    }
+		    else if(num_split >= num_no_change & num_split >= num_coarse)
+	            {
+                      rf = OCT_SPLIT;
+		    }
+      	            refine_flags.at(ele-eleLocalBegin) = rf;
+		}
             }
-
         }
+        std::cout<<"REFINE_FLAGS ASSIGNED "<<std::endl;
         return refine_flags;
     } 
 
@@ -404,8 +411,6 @@ namespace bssn
                 }
                 const double rp = std::min(rp1, rp2);
 
-		// instead: if DDChi value @rp etc....
-		
                 for (int level = 0; level < bssn::BSSN_BOX_NUM_LEVELS[punct_id]; level ++)
                 {
                   if (rp >= bssn_box_radii_at[punct_id][level])
@@ -422,9 +427,9 @@ namespace bssn
                     {
                         refine_flags[ele-eleLocalBegin] = OCT_NO_CHANGE;
                     }
-
                     break;
                   }
+		  
                 }
             }
         }

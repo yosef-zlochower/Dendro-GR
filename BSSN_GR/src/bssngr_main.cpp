@@ -363,6 +363,7 @@ bssn:
 
             if ((step % bssn::BSSN_REMESH_TEST_FREQ) == 0) {
                 already_checkpointed_in_this_it = false;
+		bssnCtx->calc_constraints();
                 bool isRemesh                   = bssnCtx->is_remesh();
                 if (isRemesh) {
                     if (!rank_global)

@@ -152,6 +152,9 @@ class BSSNCtx : public ts::Ctx<BSSNCtx, DendroScalar, unsigned int> {
     /**@brief: function execute after each step*/
     bool is_remesh();
 
+    /**@brief: calculate constraints. */
+    int calc_constraints();
+
     /**@brief: write to vtu. */
     int write_vtu();
 
