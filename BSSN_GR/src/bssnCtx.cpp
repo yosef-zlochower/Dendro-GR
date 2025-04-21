@@ -1208,7 +1208,9 @@ bool BSSNCtx::is_remesh() {
                                bssn::BSSN_DENDRO_AMR_FAC);
     } else if (bssn::BSSN_REFINEMENT_MODE == bssn::RefinementMode::DELTA_DELTA_CHI) {
 	 isRefine = bssn::isRemeshDeltaDeltaChi(m_uiMesh, m_uiBHLoc, (const double**)unzipcVar, grad2_chi_varId, (const double**)unzipVar, bssn::VAR::U_CHI);
-    } 
+    } else if (bssn::BSSN_REFINEMENT_MODE == bssn::RefinementMode::DELTA_DELTA_CHI_ERROR) { 
+         isRefine = bssn::isReMeshWAMRDeltaDeltaChi(m_uiMesh, (const double**)unzipcVar, grad2_chi_varId, waveletTolFunc, bssn::BSSN_DENDRO_AMR_FAC); 
+    }
 
     return isRefine;
 }

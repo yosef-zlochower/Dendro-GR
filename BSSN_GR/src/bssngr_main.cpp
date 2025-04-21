@@ -380,8 +380,8 @@ bssn:
                     unsigned int lmin, lmax;
                     pmesh->computeMinMaxLevel(lmin, lmax);
                     if (!pmesh->getMPIRank())
-                        printf("post merger grid level = (%d, %d)\n", lmin,
-                               lmax);
+                        //printf("post merger grid level = (%d, %d)\n", lmin,
+                        //       lmax);
                     bssn::BSSN_RK45_TIME_STEP_SIZE =
                         bssn::BSSN_CFL_FACTOR *
                         ((bssn::BSSN_COMPD_MAX[0] - bssn::BSSN_COMPD_MIN[0]) *
@@ -465,8 +465,10 @@ bssn:
         double t2_g;
         par::Mpi_Allreduce(&t2, &t2_g, 1, MPI_MAX, ets->get_global_comm());
         if (!(ets->get_global_rank()))
+	{
             std::cout << " ETS time (max) : " << t2_g << std::endl;
-
+	    std::cout << " Success! " << std::endl;
+	}
         delete bssnCtx->get_mesh();
         delete bssnCtx;
         delete ets;

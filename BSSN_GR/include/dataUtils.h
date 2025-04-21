@@ -57,6 +57,8 @@ namespace bssn
     std::vector<unsigned int> isReMeshWAMRHelper(ot::Mesh* pMesh, const double **unzippedVec,const unsigned int * varIds,const unsigned int numVars,std::function<double(double,double,double,double*)>wavelet_tol,double amr_coarse_fac);
     bool isRemeshDeltaDeltaChi(ot::Mesh* pMesh, const Point* bhLoc, const double **unzippedcVec, const unsigned int varId_D2chi, const double **unzippedVec, const unsigned int varId_chi); 
     std::vector<unsigned int> isRemeshDeltaDeltaChiHelper(ot::Mesh* pMesh, const Point* bhLoc, const double **unzippedcVec, const unsigned int varId_D2chi, const double **unzippedVec, const unsigned int varId_chi); 
+    bool isReMeshWAMRDeltaDeltaChi(ot::Mesh* pMesh, const double **unzippedcVec, const unsigned int varId_D2chi,std::function<double(double,double,double,double*)>wavelet_tol,double amr_coarse_fac); 
+    
     /**
      * @brief refine only based on the alpha variable event horizon. 
      * 
