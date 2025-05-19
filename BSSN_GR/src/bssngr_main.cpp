@@ -380,8 +380,10 @@ bssn:
                     unsigned int lmin, lmax;
                     pmesh->computeMinMaxLevel(lmin, lmax);
                     if (!pmesh->getMPIRank())
+                    {
                         //printf("post merger grid level = (%d, %d)\n", lmin,
                         //       lmax);
+                    }
                     bssn::BSSN_RK45_TIME_STEP_SIZE =
                         bssn::BSSN_CFL_FACTOR *
                         ((bssn::BSSN_COMPD_MAX[0] - bssn::BSSN_COMPD_MIN[0]) *
