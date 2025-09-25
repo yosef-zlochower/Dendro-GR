@@ -420,7 +420,7 @@ bssn:
             const double current_time = MPI_Wtime();
             bool terminate_now        = false;
             if (!ets->get_global_rank()) {
-                if (current_time - start_time > WALL_TIME) {
+                if ((current_time - start_time)/60 > WALL_TIME) {
                     terminate_now = true;
                 }
             }

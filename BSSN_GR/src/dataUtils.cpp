@@ -56,8 +56,7 @@ namespace bssn
                     ptList.push_back(Point(GRIDX_TO_X(x),GRIDY_TO_Y(y),GRIDZ_TO_Z(z)));
                     
                     //std::cout<<" x: "<<GRIDX_TO_X(x)<<" y: "<<GRIDY_TO_Y(y)<<" z: "<<GRIDZ_TO_Z(z)<<std::endl;
-                    
-
+                   
                 }
 
             }
@@ -204,7 +203,9 @@ namespace bssn
 
     }
 
-    bool isReMeshWAMRDeltaDeltaChi(ot::Mesh* pMesh, const double **unzippedcVec, const unsigned int varId_D2chi, std::function<double(double,double,double,double*)>wavelet_tol,double amr_coarse_fac)
+    //bool isReMeshWAMRConstraint(ot::Mesh* pMesh, const double **unzippedcVec, const unsigned int varId_grad2_chi, std::function<double(double,double,double,double*)>wavelet_tol,double amr_coarse_fac)
+    bool isReMeshWAMRConstraint(ot::Mesh* pMesh, const double **unzippedcVec, const unsigned int varId_grad_chi, std::function<double(double,double,double,double*)>wavelet_tol,double amr_coarse_fac)
+    //bool isReMeshWAMRConstraint(ot::Mesh* pMesh, const double **unzippedcVec, const unsigned int varId_grad_grad2_chi_weighted, std::function<double(double,double,double,double*)>wavelet_tol,double amr_coarse_fac)
     {
         // if(!(pMesh->isReMeshUnzip((const double **)unzippedVec,varIds,numVars,wavelet_tol,bssn::BSSN_DENDRO_AMR_FAC)))
         //     return false;
@@ -279,7 +280,9 @@ namespace bssn
                     
                     // initialize all the wavelet errors to zero initially. 
                     
-                    pMesh->getUnzipElementalNodalValues(unzippedcVec[varId_D2chi],blk, ele, eVecTmp.data(), true);
+                    //pMesh->getUnzipElementalNodalValues(unzippedcVec[varId_grad2_chi],blk, ele, eVecTmp.data(), true);
+		    pMesh->getUnzipElementalNodalValues(unzippedcVec[varId_grad_chi],blk, ele, eVecTmp.data(), true);
+		    //pMesh->getUnzipElementalNodalValues(unzippedcVec[varId_grad_grad2_chi_weighted],blk, ele, eVecTmp.data(), true);
 
                     // computes the wavelets. 
                     wrefEl->compute_wavelets_3D((double*)(eVecTmp.data()),isz,wCout,isBdyOct);
@@ -474,7 +477,7 @@ namespace bssn
         return isOctChange_g;
     }
 
-    bool isRemeshDeltaDeltaChi(ot::Mesh* pMesh, const Point* bhLoc, const double **unzippedcVec, const unsigned int varId_D2chi, const double **unzippedVec, const unsigned int varId_chi)
+    bool isRemeshConstraint(ot::Mesh* pMesh, const Point* bhLoc, const double **unzippedcVec, const unsigned int varId_grad2_chi, const double **unzippedVec, const unsigned int varId_chi)
     {
         bool isOctChange=false;
         bool isOctChange_g =false;	 
@@ -485,13 +488,13 @@ namespace bssn
 
         if(pMesh->isActive())
 	{
-	    if(bssn::BSSN_CURRENT_RK_STEP == 0)
+	    if(bssn::BSSN_CURRENT_RK_STEP = 0)
 	    {
 		refine_flags = bssn::isRemeshSinSInitHelper(pMesh, bhLoc);
             }
 	    else
 	    {
-                refine_flags = bssn::isRemeshDeltaDeltaChiHelper(pMesh, bhLoc, unzippedcVec, varId_D2chi, unzippedVec, varId_chi);
+                refine_flags = bssn::isRemeshConstraintHelper(pMesh, bhLoc, unzippedcVec, varId_grad2_chi, unzippedVec, varId_chi);
 	    }
             isOctChange = pMesh->setMeshRefinementFlags(refine_flags);
 	    
@@ -500,7 +503,7 @@ namespace bssn
         return isOctChange_g;	
     }
 
-    std::vector<unsigned int> isRemeshDeltaDeltaChiHelper(ot::Mesh* pMesh, const Point* bhLoc, const double **unzippedcVec, const unsigned int varId_D2chi, const double **unzippedVec, unsigned int varId_chi)
+    std::vector<unsigned int> isRemeshConstraintHelper(ot::Mesh* pMesh, const Point* bhLoc, const double **unzippedcVec, const unsigned int varId_grad2_chi, const double **unzippedVec, unsigned int varId_chi)
     {    
         const unsigned int eleLocalBegin = pMesh->getElementLocalBegin();
         bool isOctChange=false;
@@ -556,7 +559,7 @@ namespace bssn
                      for(unsigned int j=3; j< eOrder+1 +  3; j++)
                       for(unsigned int i=3; i< eOrder+1 + 3; i++)
 		      {
-                        double D2Chi = unzippedcVec[varId_D2chi][offset + (ei[2]*eOrder + k)*sz[0]*sz[1] + (ei[1]*eOrder + j)*sz[0] + (ei[0]*eOrder + i)];
+                        double D2Chi = unzippedcVec[varId_grad2_chi][offset + (ei[2]*eOrder + k)*sz[0]*sz[1] + (ei[1]*eOrder + j)*sz[0] + (ei[0]*eOrder + i)];
 		        double chi = unzippedVec[varId_chi][offset + (ei[2]*eOrder + k)*sz[0]*sz[1] + (ei[1]*eOrder + j)*sz[0] + (ei[0]*eOrder + i)];
                         double LogAbsChiExpression = log10(fabs(D2Chi/pow(chi,2)));
 			// change for loop

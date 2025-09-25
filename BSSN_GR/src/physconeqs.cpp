@@ -698,7 +698,9 @@ const double DENDRO_693 = -DENDRO_559;
 const double DENDRO_694 = -DENDRO_594;
 const double DENDRO_695 = -DENDRO_575;
 const double DENDRO_696 = DENDRO_584*DENDRO_670;
-grad2_chi_2norm[pp] = sqrt(grad2_2_2_chi[pp]*grad2_2_2_chi[pp] + grad2_1_1_chi[pp]*grad2_1_1_chi[pp] + grad2_0_0_chi[pp]*grad2_0_0_chi[pp] + 2*grad2_1_2_chi[pp]*grad2_1_2_chi[pp] + 2*grad2_0_2_chi[pp]*grad2_0_2_chi[pp] + 2*grad2_0_1_chi[pp]*grad2_0_1_chi[pp]); 
+grad2_chi[pp] = grad2_2_2_chi[pp]*grad2_2_2_chi[pp] + grad2_1_1_chi[pp]*grad2_1_1_chi[pp] + grad2_0_0_chi[pp]*grad2_0_0_chi[pp] + 2*grad2_1_2_chi[pp]*grad2_1_2_chi[pp] + 2*grad2_0_2_chi[pp]*grad2_0_2_chi[pp] + 2*grad2_0_1_chi[pp]*grad2_0_1_chi[pp]; 
+grad_chi[pp] = grad_0_chi[pp]*grad_0_chi[pp] + grad_1_chi[pp]*grad_1_chi[pp] + grad_2_chi[pp]*grad_2_chi[pp];	
+grad_grad2_chi_weighted[pp] = 0.25*grad_chi[pp] + 0.75*grad2_chi[pp];
 
 // Dendro: printing variables
 //--

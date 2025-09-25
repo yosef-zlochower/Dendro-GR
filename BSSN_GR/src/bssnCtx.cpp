@@ -1164,7 +1164,9 @@ bool BSSNCtx::is_remesh() {
     DendroScalar* unzipcVar[BSSN_CONSTRAINT_NUM_VARS];
     m_cvar_unz.to_2d(unzipcVar);
 
-    enum VAR_CONSTRAINT grad2_chi_varId = C_GRAD2_CHI_2NORM;
+    enum VAR_CONSTRAINT varId_grad2_chi = C_GRAD2_CHI;
+    enum VAR_CONSTRAINT varId_grad_chi = C_GRAD_CHI;
+    enum VAR_CONSTRAINT varId_grad_grad2_chi_weighted = C_GRAD_GRAD2_CHI_WEIGHTED;
 
     unsigned int refineVarIds[bssn::BSSN_NUM_REFINE_VARS];
     for (unsigned int vIndex = 0; vIndex < bssn::BSSN_NUM_REFINE_VARS; vIndex++)
@@ -1206,10 +1208,13 @@ bool BSSNCtx::is_remesh() {
          isRefine = bssn::isRemeshSiSCombination(m_uiMesh, m_uiBHLoc, (const double**)unzipVar, refineVarIds,
                                bssn::BSSN_NUM_REFINE_VARS, waveletTolFunc,
                                bssn::BSSN_DENDRO_AMR_FAC);
-    } else if (bssn::BSSN_REFINEMENT_MODE == bssn::RefinementMode::DELTA_DELTA_CHI) {
-	 isRefine = bssn::isRemeshDeltaDeltaChi(m_uiMesh, m_uiBHLoc, (const double**)unzipcVar, grad2_chi_varId, (const double**)unzipVar, bssn::VAR::U_CHI);
-    } else if (bssn::BSSN_REFINEMENT_MODE == bssn::RefinementMode::DELTA_DELTA_CHI_ERROR) { 
-         isRefine = bssn::isReMeshWAMRDeltaDeltaChi(m_uiMesh, (const double**)unzipcVar, grad2_chi_varId, waveletTolFunc, bssn::BSSN_DENDRO_AMR_FAC); 
+    } else if (bssn::BSSN_REFINEMENT_MODE == bssn::RefinementMode::CONSTRAINT) {
+	 isRefine = bssn::isRemeshConstraint(m_uiMesh, m_uiBHLoc, (const double**)unzipcVar, varId_grad2_chi, (const double**)unzipVar, bssn::VAR::U_CHI);
+    } else if (bssn::BSSN_REFINEMENT_MODE == bssn::RefinementMode::CONSTRAINT_ERROR) { 
+         //isRefine = bssn::isReMeshWAMRConstraint(m_uiMesh, (const double**)unzipcVar, varId_grad2_chi, waveletTolFunc, bssn::BSSN_DENDRO_AMR_FAC); 
+	 isRefine = bssn::isReMeshWAMRConstraint(m_uiMesh, (const double**)unzipcVar, varId_grad_chi, waveletTolFunc, bssn::BSSN_DENDRO_AMR_FAC);
+	 //isRefine = bssn::isReMeshWAMRConstraint(m_uiMesh, (const double**)unzipcVar, varId_grad_grad2_chi_weighted, waveletTolFunc, bssn::BSSN_DENDRO_AMR_FAC);
+
     }
 
     return isRefine;

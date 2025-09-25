@@ -73,7 +73,9 @@ enum VAR_CONSTRAINT {
     C_MOM2,
     C_PSI4_REAL,
     C_PSI4_IMG,
-    C_GRAD2_CHI_2NORM
+    C_GRAD2_CHI,
+    C_GRAD_CHI,
+    C_GRAD_GRAD2_CHI_WEIGHTED
 };
 
 static const char* BSSN_VAR_NAMES[] = {
@@ -83,7 +85,7 @@ static const char* BSSN_VAR_NAMES[] = {
     "U_SYMAT0", "U_SYMAT1", "U_SYMAT2", "U_SYMAT3", "U_SYMAT4", "U_SYMAT5"};
 
 static const char* BSSN_CONSTRAINT_VAR_NAMES[] = {
-    "C_HAM", "C_MOM0", "C_MOM1", "C_MOM2", "C_PSI4_REAL", "C_PSI4_IMG", "GRAD2_CHI_2NORM"};
+    "C_HAM", "C_MOM0", "C_MOM1", "C_MOM2", "C_PSI4_REAL", "C_PSI4_IMG", "C_GRAD2_CHI", "C_GRAD_CHI", "C_GRAD_GRAD2_CHI_WEIGHTED"};
 
 /**
  * @brief Refinement mode types.
@@ -92,7 +94,7 @@ static const char* BSSN_CONSTRAINT_VAR_NAMES[] = {
  * EH_WAMR: both even horizon as well as WAMR based refinement.
  * BH_LOC BH location based refinement, if turned on track the bh locations.
  */
-enum RefinementMode{WAMR=0, EH, EH_WAMR, BH_LOC, SPHERE_IN_SPHERE, SIS_OUT_WAMR_IN, DELTA_DELTA_CHI, DELTA_DELTA_CHI_ERROR};
+enum RefinementMode{WAMR=0, EH, EH_WAMR, BH_LOC, SPHERE_IN_SPHERE, SIS_OUT_WAMR_IN, CONSTRAINT, CONSTRAINT_ERROR};
 
 }  // end of namespace bssn
 

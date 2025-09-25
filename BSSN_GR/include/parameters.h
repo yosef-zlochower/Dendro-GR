@@ -32,7 +32,7 @@ namespace bssn
     static const unsigned int BSSN_NUM_VARS=24;
 
     /**@brief number of constraints variables*/
-    static const unsigned int BSSN_CONSTRAINT_NUM_VARS=7;
+    static const unsigned int BSSN_CONSTRAINT_NUM_VARS=9;
 
     /***@brief number of RK45 stages*/
     static const unsigned int BSSN_RK45_STAGES=6;
@@ -352,7 +352,7 @@ namespace bssn
     /***@brief: number of box levels for BH1 and BH2 respectively*/
     extern unsigned int BSSN_BOX_NUM_LEVELS[2];
 
-    /***@breif: number of DDchi contour values for each black hole*/
+    /***@breif: number of grad2 chi contour values for each black hole*/
     extern unsigned int BSSN_CHI_NUM_VALUES;
 
     /***@brief: box radii for BH1*/
@@ -361,13 +361,13 @@ namespace bssn
     /***@brief: box radii for BH2*/
     extern double BSSN_BOX_RADII_2[BSSN_BOX_MAX_RADII];
 
-    /***@brief: DDchi values for BH1*/
+    /***@brief: grad2 values for BH1*/
     extern double BSSN_CHI_VALUES[BSSN_BOX_MAX_RADII];
 
     /***@brief: box shape*/
     extern unsigned int BSSN_BOX_TYPE;
 
-    /***@brief: wall time parameter*/
+    /***@brief: wall time parameter in minutes*/
     extern double WALL_TIME;
 
     // note ko derivs are not included
