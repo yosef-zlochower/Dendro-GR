@@ -371,8 +371,17 @@ void readParamJSONFile(const char* fName, MPI_Comm comm) {
     if (parFile.find("BSSN_BOX_TYPE") != parFile.end()) {
         bssn::BSSN_BOX_TYPE = parFile["BSSN_BOX_TYPE"];
     }
+
     if (parFile.find("WALL_TIME") != parFile.end()) {
         bssn::WALL_TIME = parFile["WALL_TIME"];
+    }
+
+    if (parFile.find("BSSN_SIS_TO_CONSTRAINT_WAMR_TRANSITION_TIME") != parFile.end()) {
+        bssn::BSSN_SIS_TO_CONSTRAINT_WAMR_TRANSITION_TIME = parFile["BSSN_SIS_TO_CONSTRAINT_WAMR_TRANSITION_TIME"];
+    }
+
+    if (parFile.find("BSSN_INNER_SIS_REGION_OUTER_BOUND") != parFile.end()) {
+        bssn::BSSN_INNER_SIS_REGION_OUTER_BOUND = parFile["BSSN_INNER_SIS_REGION_OUTER_BOUND"];
     }
 
     if (parFile.find("BSSN_BOX_RADII_1") != parFile.end()) {
@@ -394,6 +403,10 @@ void readParamJSONFile(const char* fName, MPI_Comm comm) {
     if (parFile.find("BSSN_CHI_VALUES") != parFile.end()) {
         for (unsigned int i = 0; i < bssn::BSSN_CHI_NUM_VALUES; i++)
             bssn::BSSN_CHI_VALUES[i] = parFile["BSSN_CHI_VALUES"][i];
+    }
+
+    if (parFile.find("BSSN_REL_ERR_MIN") != parFile.end()) {
+        bssn::BSSN_REL_ERR_MIN = parFile["BSSN_REL_ERR_MIN"];
     }
 
     BSSN_OCTREE_MAX[0] = (double)(1u << bssn::BSSN_MAXDEPTH);

@@ -343,6 +343,12 @@ namespace bssn
     /***@brief: max allowed box levels for BH1 and BH2*/
     static const unsigned int BSSN_BOX_MAX_RADII = 20;
     
+    /***@brief: transition time from SiS to Constraint based WAMR*/
+    extern double BSSN_SIS_TO_CONSTRAINT_WAMR_TRANSITION_TIME;
+
+    /***@brief: outer boundary of SiS region in Constraint based WAMR*/
+    extern double BSSN_INNER_SIS_REGION_OUTER_BOUND;
+
     /***@brief: number of different refinement methods being combined*/
     extern unsigned int BSSN_REFINEMENT_NUM_MODES;
     
@@ -369,6 +375,9 @@ namespace bssn
 
     /***@brief: wall time parameter in minutes*/
     extern double WALL_TIME;
+
+    /***@brief: relative_error = deltaF / (BSSN_REL_ERR_MIN + F)*/
+    extern double BSSN_REL_ERR_MIN;
 
     // note ko derivs are not included
     #ifdef BSSN_USE_ADVECTIVE_DERIVS

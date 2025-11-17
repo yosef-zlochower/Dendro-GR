@@ -57,9 +57,8 @@ namespace bssn
     std::vector<unsigned int> isReMeshWAMRHelper(ot::Mesh* pMesh, const double **unzippedVec,const unsigned int * varIds,const unsigned int numVars,std::function<double(double,double,double,double*)>wavelet_tol,double amr_coarse_fac);
     bool isRemeshConstraint(ot::Mesh* pMesh, const Point* bhLoc, const double **unzippedcVec, const unsigned int varId_grad2_chi, const double **unzippedVec, const unsigned int varId_chi); 
     std::vector<unsigned int> isRemeshConstraintHelper(ot::Mesh* pMesh, const Point* bhLoc, const double **unzippedcVec, const unsigned int varId_grad2_chi, const double **unzippedVec, const unsigned int varId_chi); 
-    //bool isReMeshWAMRConstraint(ot::Mesh* pMesh, const double **unzippedcVec, const unsigned int varId_grad2_chi,std::function<double(double,double,double,double*)>wavelet_tol,double amr_coarse_fac); 
-    bool isReMeshWAMRConstraint(ot::Mesh* pMesh, const double **unzippedcVec, const unsigned int varId_grad_chi,std::function<double(double,double,double,double*)>wavelet_tol,double amr_coarse_fac);
-    //bool isReMeshWAMRConstraint(ot::Mesh* pMesh, const double **unzippedcVec, const unsigned int varId_grad_grad2_chi,std::function<double(double,double,double,double*)>wavelet_tol,double amr_coarse_fac);
+    bool isReMeshWAMRConstraint(ot::Mesh* pMesh, const Point* bhLoc, const double **unzippedcVec, const unsigned int varId_grad_grad2_chi_expression,std::function<double(double,double,double,double*)>wavelet_tol,double amr_coarse_fac);
+    std::vector<unsigned int> isReMeshWAMRConstraintHelper(ot::Mesh* pMesh, const Point* bhLoc, const double **unzippedcVec, const unsigned int varId_grad_grad2_chi_expression, std::function<double(double,double,double,double*)>wavelet_tol,double amr_coarse_fac);
     
     /**
      * @brief refine only based on the alpha variable event horizon. 

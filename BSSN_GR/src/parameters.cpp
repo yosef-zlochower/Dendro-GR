@@ -164,6 +164,8 @@ namespace bssn
     double* BSSN_DERIV_WORKSPACE=nullptr;
 
     double WALL_TIME = 1.0e300;
+    double BSSN_SIS_TO_CONSTRAINT_WAMR_TRANSITION_TIME = 60.0;
+    double BSSN_INNER_SIS_REGION_OUTER_BOUND = 5.0;
     unsigned int BSSN_REFINEMENT_NUM_MODES = 2;
     unsigned int BSSN_REFINEMENT_MODE_COMBINATION_ORDER[2];
     unsigned int BSSN_BOX_NUM_LEVELS[2];
@@ -171,6 +173,7 @@ namespace bssn
     double BSSN_BOX_RADII_1[BSSN_BOX_MAX_RADII];
     double BSSN_BOX_RADII_2[BSSN_BOX_MAX_RADII];
     double BSSN_CHI_VALUES[BSSN_BOX_MAX_RADII];
+    double BSSN_REL_ERR_MIN = 1.0;
     
     unsigned int BSSN_BOX_TYPE = 0 ;
 
@@ -515,9 +518,19 @@ namespace bssn
         if (parFile.contains("BSSN_BOX_TYPE")) {
             bssn::BSSN_BOX_TYPE = parFile["BSSN_BOX_TYPE"].as_integer();
         }
+
         if (parFile.contains("WALL_TIME")) {
             bssn::WALL_TIME = parFile["WALL_TIME"].as_integer();
         }
+
+        if (parFile.contains("BSSN_SIS_TO_CONSTRAINT_WAMR_TRANSITION_TIME")) {
+            bssn::BSSN_SIS_TO_CONSTRAINT_WAMR_TRANSITION_TIME = parFile["BSSN_SIS_TO_CONSTRAINT_WAMR_TRANSITION_TIME"].as_floating();
+	}
+
+        if (parFile.contains("BSSN_INNER_SIS_REGION_OUTER_BOUND")) {
+            bssn::BSSN_INNER_SIS_REGION_OUTER_BOUND = parFile["BSSN_INNER_SIS_REGION_OUTER_BOUND"].as_floating();
+	}
+
 
         if (parFile.contains("BSSN_BOX_RADII_1")) {
             for (unsigned int i = 0; i < bssn::BSSN_BOX_NUM_LEVELS[0]; i++)
@@ -538,6 +551,10 @@ namespace bssn
 	if (parFile.contains("BSSN_CHI_VALUES")) {
             for (unsigned int i = 0; i < bssn::BSSN_CHI_NUM_VALUES; i++)
                 bssn::BSSN_CHI_VALUES[i] = parFile["BSSN_CHI_VALUES"][i].as_floating();
+        }
+
+	if (parFile.contains("BSSN_REL_ERR_MIN")) {
+            bssn::BSSN_REL_ERR_MIN = parFile["BSSN_REL_ERR_MIN"].as_floating();
         }
 
         MPI_Barrier(comm);

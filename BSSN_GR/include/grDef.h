@@ -75,7 +75,7 @@ enum VAR_CONSTRAINT {
     C_PSI4_IMG,
     C_GRAD2_CHI,
     C_GRAD_CHI,
-    C_GRAD_GRAD2_CHI_WEIGHTED
+    C_GRAD_GRAD2_CHI_EXPRESSION
 };
 
 static const char* BSSN_VAR_NAMES[] = {
@@ -85,7 +85,7 @@ static const char* BSSN_VAR_NAMES[] = {
     "U_SYMAT0", "U_SYMAT1", "U_SYMAT2", "U_SYMAT3", "U_SYMAT4", "U_SYMAT5"};
 
 static const char* BSSN_CONSTRAINT_VAR_NAMES[] = {
-    "C_HAM", "C_MOM0", "C_MOM1", "C_MOM2", "C_PSI4_REAL", "C_PSI4_IMG", "C_GRAD2_CHI", "C_GRAD_CHI", "C_GRAD_GRAD2_CHI_WEIGHTED"};
+    "C_HAM", "C_MOM0", "C_MOM1", "C_MOM2", "C_PSI4_REAL", "C_PSI4_IMG", "C_GRAD2_CHI", "C_GRAD_CHI", "C_GRAD_GRAD2_CHI_EXPRESSION"};
 
 /**
  * @brief Refinement mode types.

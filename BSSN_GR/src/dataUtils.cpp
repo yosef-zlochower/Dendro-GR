@@ -203,9 +203,39 @@ namespace bssn
 
     }
 
-    //bool isReMeshWAMRConstraint(ot::Mesh* pMesh, const double **unzippedcVec, const unsigned int varId_grad2_chi, std::function<double(double,double,double,double*)>wavelet_tol,double amr_coarse_fac)
-    bool isReMeshWAMRConstraint(ot::Mesh* pMesh, const double **unzippedcVec, const unsigned int varId_grad_chi, std::function<double(double,double,double,double*)>wavelet_tol,double amr_coarse_fac)
-    //bool isReMeshWAMRConstraint(ot::Mesh* pMesh, const double **unzippedcVec, const unsigned int varId_grad_grad2_chi_weighted, std::function<double(double,double,double,double*)>wavelet_tol,double amr_coarse_fac)
+    bool isReMeshWAMRConstraint(ot::Mesh* pMesh, const Point* bhLoc, const double **unzippedcVec, const unsigned int varId_grad_grad2_chi_expression, std::function<double(double,double,double,double*)>wavelet_tol,double amr_coarse_fac)
+    {
+        bool isOctChange=false;
+        bool isOctChange_g =false;
+        const unsigned int eleLocalBegin = pMesh->getElementLocalBegin();
+        const unsigned int eleLocalEnd = pMesh->getElementLocalEnd();
+
+        std::vector<unsigned int> refine_flags;
+        std::vector<unsigned int> refine_flags_WAMR;
+
+        if(pMesh->isActive())
+        {
+            refine_flags = bssn::isRemeshSinSInitHelper(pMesh, bhLoc);
+            if(bssn::BSSN_CURRENT_RK_COORD_TIME > bssn::BSSN_SIS_TO_CONSTRAINT_WAMR_TRANSITION_TIME)
+            {
+                refine_flags_WAMR = bssn::isReMeshWAMRConstraintHelper(pMesh, bhLoc, unzippedcVec, varId_grad_grad2_chi_expression, wavelet_tol, amr_coarse_fac);
+                for(unsigned int ele = eleLocalBegin; ele < eleLocalEnd; ele++)
+                {
+                  if(refine_flags_WAMR[ele-eleLocalBegin] != OCT_IGNORE)
+                  {
+                    refine_flags[ele-eleLocalBegin] = refine_flags_WAMR[ele-eleLocalBegin];
+                  }
+                }
+            }
+            isOctChange = pMesh->setMeshRefinementFlags(refine_flags);
+
+        }
+        MPI_Allreduce(&isOctChange,&isOctChange_g,1,MPI_CXX_BOOL,MPI_LOR,pMesh->getMPIGlobalCommunicator());
+        return isOctChange_g;
+    }
+
+
+    std::vector<unsigned int> isReMeshWAMRConstraintHelper(ot::Mesh* pMesh, const Point* bhLoc, const double **unzippedcVec, const unsigned int varId_grad_grad2_chi_expression, std::function<double(double,double,double,double*)>wavelet_tol,double amr_coarse_fac)
     {
         // if(!(pMesh->isReMeshUnzip((const double **)unzippedVec,varIds,numVars,wavelet_tol,bssn::BSSN_DENDRO_AMR_FAC)))
         //     return false;
@@ -278,15 +308,60 @@ namespace bssn
                     double hx[3] ={dx_domain.x(),dx_domain.y(),dx_domain.z()};
                     const double tol_ele = wavelet_tol(domain_pt1.x(),domain_pt1.y(),domain_pt1.z(),hx);
                     
+                    const unsigned int ln = 1u<<(m_uiMaxDepth-pNodes[ele].getLevel());
+                    unsigned int punct_id = 0;
+
+                    const double x_min = pNodes[ele].minX();
+                    const double y_min = pNodes[ele].minY();
+                    const double z_min = pNodes[ele].minZ();
+
+                    const double x_max = pNodes[ele].minX() + ln;
+                    const double y_max = pNodes[ele].minY() + ln;
+                    const double z_max = pNodes[ele].minZ() + ln;
+                    const Point oct_min = Point(x_min,y_min,z_min);
+                    const Point oct_max = Point(x_max,y_max,z_max);
+                    Point coord_min;
+                    Point coord_max;
+                    pMesh->octCoordToDomainCoord(oct_min,coord_min);
+                    pMesh->octCoordToDomainCoord(oct_max,coord_max);
+         
+                    const double rp1 = min_distance_cell_to_point(coord_min, coord_max, bhLoc[0]);
+                    const double rp2 = min_distance_cell_to_point(coord_min, coord_max, bhLoc[1]);
+
+                    if (rp1 < rp2)
+                    {
+                        punct_id = 0;
+                    }
+                    else
+                    {
+                        punct_id = 1;
+                    }
+                    const double rp = std::min(rp1, rp2);
+
                     // initialize all the wavelet errors to zero initially. 
                     
-                    //pMesh->getUnzipElementalNodalValues(unzippedcVec[varId_grad2_chi],blk, ele, eVecTmp.data(), true);
-		    pMesh->getUnzipElementalNodalValues(unzippedcVec[varId_grad_chi],blk, ele, eVecTmp.data(), true);
-		    //pMesh->getUnzipElementalNodalValues(unzippedcVec[varId_grad_grad2_chi_weighted],blk, ele, eVecTmp.data(), true);
+		    pMesh->getUnzipElementalNodalValues(unzippedcVec[varId_grad_grad2_chi_expression],blk, ele, eVecTmp.data(), true);
 
                     // computes the wavelets. 
-                    wrefEl->compute_wavelets_3D((double*)(eVecTmp.data()),isz,wCout,isBdyOct);
-                    wtol_val = (normL2(wCout.data(),wCout.size()))/sqrt(wCout.size());
+                    wrefEl->compute_wavelets_3D((double*)(eVecTmp.data()),isz,wCout,isBdyOct,bssn::BSSN_REL_ERR_MIN);
+                    //wtol_val = (normL2(wCout.data(),wCout.size()))/sqrt(wCout.size());
+                    wtol_val = 10.0;
+                    { 
+		    const unsigned int ln = 1u<<(m_uiMaxDepth-pNodes[ele].getLevel());
+                    const double hx = ln/(double)(eOrder);
+                        const double x = pNodes[ele].minX() + eOrder/2*hx;
+                        const double y = pNodes[ele].minY() + eOrder/2*hx;
+                        const double z = pNodes[ele].minZ() + eOrder/2*hx;
+                        const Point oct_mid = Point(x,y,z);
+                        Point tmp;
+                        pMesh->octCoordToDomainCoord(oct_mid,tmp);
+		        const double rad2 = tmp.x()*tmp.x()+tmp.y()*tmp.y()+tmp.z()*tmp.z();
+			if(rad2>0.8*bssn::BSSN_CURRENT_RK_COORD_TIME*bssn::BSSN_CURRENT_RK_COORD_TIME || rp < bssn::BSSN_INNER_SIS_REGION_OUTER_BOUND)
+			{
+                          refine_flags[(ele-eleLocalBegin)] = OCT_IGNORE;
+			  continue; 
+		        }
+                    }
 
                     const double l_max = wtol_val;
                     if(l_max > tol_ele )
@@ -309,7 +384,8 @@ namespace bssn
             }
 
             delete wrefEl;
-            
+            return refine_flags;
+
             // --- Below code enforces the artifical refinement by looking at the puncture locations, by
             // --- overiding what currently set by the wavelets. 
             for(unsigned int ele=eleLocalBegin; ele< eleLocalEnd; ele++)
@@ -469,12 +545,9 @@ namespace bssn
 
             }
                 
-            isOctChange = pMesh->setMeshRefinementFlags(refine_flags);
-
         }
+        return refine_flags;
 
-        MPI_Allreduce(&isOctChange,&isOctChange_g,1,MPI_CXX_BOOL,MPI_LOR,pMesh->getMPIGlobalCommunicator());
-        return isOctChange_g;
     }
 
     bool isRemeshConstraint(ot::Mesh* pMesh, const Point* bhLoc, const double **unzippedcVec, const unsigned int varId_grad2_chi, const double **unzippedVec, const unsigned int varId_chi)
@@ -612,7 +685,7 @@ namespace bssn
         bool isOctChange=false;
         bool isOctChange_g =false;
  
-        if(pMesh->isActive()){
+       if(pMesh->isActive()){
             std::vector<unsigned int> refine_flags = bssn::isRemeshSinSHelper(pMesh, bhLoc);
             std::vector<unsigned int> refine_flags_WAMR = bssn::isReMeshWAMRHelper(pMesh, unzippedVec, varIds, numVars, wavelet_tol, amr_coarse_fac);
             for(unsigned int ele = eleLocalBegin; ele < eleLocalEnd; ele++)
@@ -757,15 +830,20 @@ namespace bssn
                 int last_radii_index = bssn::BSSN_BOX_NUM_LEVELS[punct_id]-1;
                 unsigned int refinement_modes_num = bssn::BSSN_REFINEMENT_NUM_MODES;
                 if (bssn::BSSN_REFINEMENT_MODE_COMBINATION_ORDER[refinement_modes_num-1] == 4 & rp > bssn_box_radii_at[punct_id][0]) 
+		// SiS INNER: [outer, inner] = [0, 4]
+		// example: SiS for [25.0, 10.0, 5.0, 2.5, 1.6, 0.0]
+		// if the radius in question is greater than the largest radii on the lists  
                 { 
-                    // SiS inner            
+                    // outer grid becomes ignored by SiS           
                     refine_flags[ele-eleLocalBegin] = OCT_IGNORE;
                     continue;
                 }
-                else if (rp < bssn_box_radii_at[punct_id][last_radii_index] | rp > bssn_box_radii_at[punct_id][0])
-                {
-                    // SiS in the middle of two WAMR grids
-		    // we don't really use this combination at all
+                else if (bssn::BSSN_REFINEMENT_MODE_COMBINATION_ORDER[refinement_modes_num-1] == 0 & rp < bssn_box_radii_at[punct_id][last_radii_index])
+		// SiS OUTER: [outer, inner] = [4, 0]
+		// example: SiS for [200.0, 100.0, 50.0, 25.0]
+		// if the radius in question is less than the smallest radii on the lists
+		{
+                    // inner grid becomes ignored by SiS 
                     refine_flags[ele-eleLocalBegin] = OCT_IGNORE;
                     continue;
                 }
