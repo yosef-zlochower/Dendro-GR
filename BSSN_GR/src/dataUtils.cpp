@@ -3,7 +3,14 @@
 //
 
 #include <iostream>
+#include <sstream>
 #include "dataUtils.h"
+
+// TEMP: temporary includes for exporting the data
+#include "dvec.h"
+#include "oct2vtk.h"
+#include "parameters.h"
+
 #define OCT_IGNORE 10u
 
 namespace bssn
@@ -256,10 +263,21 @@ namespace bssn
         const double dBH = (BSSN_BH_LOC[0]-BSSN_BH_LOC[1]).abs();
         const unsigned int refLevMin = std::min(bssn::BSSN_BH1_MAX_LEV,bssn::BSSN_BH2_MAX_LEV);
 
+
+        // create a vector to store the error in the constraint, by *element* (so block)
+        ot::DVector<DendroScalar, unsigned int> constraint_violation_vec_ele;
+        constraint_violation_vec_ele.create_vector(pMesh, ot::DVEC_TYPE::OCT_CELL_CENTERED, ot::DVEC_LOC::HOST, 1, false);
+
+        // now we can index into the constraint_violation_vec the same way as our unzippedVec, basically
+
+        
         if(pMesh->isActive())
         {
             if(!pMesh->getMPIRank())
                 printf("BH coord sep: %.8E \n",dBH);//std::cout<<"BH coord sep: "<<dBH<<std::endl;
+
+
+            double* constraint_error_ptr = constraint_violation_vec_ele.get_vec_ptr();
 
             const RefElement* refEl = pMesh->getReferenceElement();
             wavelet::WaveletEl* wrefEl = new wavelet::WaveletEl((RefElement*)refEl);
@@ -345,8 +363,13 @@ namespace bssn
 		    pMesh->getUnzipElementalNodalValues(unzippedcVec[varId_grad_grad2_chi_expression],blk, ele, eVecTmp.data(), true);
 
                     // computes the wavelets. 
-                    wrefEl->compute_wavelets_3D((double*)(eVecTmp.data()),isz,wCout,isBdyOct,bssn::BSSN_REL_ERR_MIN);
-                    wtol_val = (normL2(wCout.data(),wCout.size()))/sqrt(wCout.size());
+                    // NOTE: compute_wavelets_3D does not take the rel error min
+                    // wrefEl->compute_wavelets_3D((double*)(eVecTmp.data()),isz,wCout,isBdyOct,bssn::BSSN_REL_ERR_MIN);
+                    wrefEl->compute_wavelets_3D((double*)(eVecTmp.data()),isz,wCout,isBdyOct);
+                    wtol_val = (normL2(wCout.data(),wCout.size())) / sqrt(wCout.size());
+                    constraint_error_ptr[ele - eleLocalBegin] = wtol_val;
+                    
+                    
                     { 
 		    const unsigned int ln = 1u<<(m_uiMaxDepth-pNodes[ele].getLevel());
                     const double hx = ln/(double)(eOrder);
@@ -383,6 +406,18 @@ namespace bssn
                 }
 
             }
+
+            const char* cell_data_names[] = {"wtol_error"};
+            unsigned int num_cell_vars = 1;
+            double* error_ptr = constraint_violation_vec_ele.get_vec_ptr();
+            const double* cell_data_pointers[] = {error_ptr};
+            // DFVK NOTE: this will now save the data (hopefully)
+            std::ostringstream filename;
+            filename << BSSN_VTU_FILE_PREFIX << "_wavelet_error_" << std::setfill('0') << std::setw(5) << TEMP_BSSN_STEP_VAL;
+
+            io::vtk::mesh2vtuFine(
+                pMesh, filename.str().c_str(), 0, NULL, NULL, 0, NULL, NULL, num_cell_vars, cell_data_names, cell_data_pointers,false 
+            );
 
             delete wrefEl;
         }

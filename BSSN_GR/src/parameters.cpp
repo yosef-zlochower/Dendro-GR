@@ -177,6 +177,9 @@ namespace bssn
     
     unsigned int BSSN_BOX_TYPE = 0 ;
 
+    // TODO: remove this temp step val! This is for debugging purposes
+    unsigned int TEMP_BSSN_STEP_VAL = 0;
+
     void readParamTOMLFile(const char * fName, MPI_Comm comm) {
 
         int rank, npes;

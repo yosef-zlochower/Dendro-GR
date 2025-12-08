@@ -21,6 +21,9 @@
 namespace bssn
 {
 
+    // TODO: remove this temp step val! This is for debugging purposes
+    extern unsigned int TEMP_BSSN_STEP_VAL;
+
     extern mem::memory_pool<double> BSSN_MEM_POOL;
     /**@brief element order*/
     extern unsigned int BSSN_ELE_ORDER;
