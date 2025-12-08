@@ -19,6 +19,7 @@
 #include "meshUtils.h"
 #include "mpi.h"
 #include "octUtils.h"
+#include "parameters.h"
 #include "rkBSSN.h"
 #include "sdc.h"
 void printtime(void) {
@@ -343,6 +344,9 @@ bssn:
         while (ets->curr_time() < bssn::BSSN_RK_TIME_END) {
             const DendroIntL step            = ets->curr_step();
             const DendroScalar time          = ets->curr_time();
+
+            // TEMP: set debug temporary step for global purposes
+            bssn::TEMP_BSSN_STEP_VAL = ets->curr_step();
 
             bssn::BSSN_CURRENT_RK_COORD_TIME = time;
             bssn::BSSN_CURRENT_RK_STEP       = step;
