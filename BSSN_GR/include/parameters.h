@@ -20,7 +20,6 @@
 
 namespace bssn
 {
-
     // TODO: remove this temp step val! This is for debugging purposes
     extern unsigned int TEMP_BSSN_STEP_VAL;
 

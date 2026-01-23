@@ -249,7 +249,6 @@ namespace bssn
 
         // if(bssn::BSSN_CURRENT_RK_COORD_TIME > 0 && bssn::BSSN_CURRENT_RK_COORD_TIME < 80)
         //     return bssn::isReMeshBHRadial(pMesh);
-        fprintf(stderr,"isReMeshWAMRConstraintHelper\n");
         std::vector<unsigned int> refine_flags;
         const double r_near[2] = {bssn::BSSN_BH1_AMR_R,bssn::BSSN_BH2_AMR_R};
         
@@ -265,19 +264,17 @@ namespace bssn
 
 
         // create a vector to store the error in the constraint, by *element* (so block)
-        ot::DVector<DendroScalar, unsigned int> constraint_violation_vec_ele;
-        constraint_violation_vec_ele.create_vector(pMesh, ot::DVEC_TYPE::OCT_CELL_CENTERED, ot::DVEC_LOC::HOST, 1, false);
+        double* constraint_error_ptr = pMesh->createElementVector(0.0, 1);
+
 
         // now we can index into the constraint_violation_vec the same way as our unzippedVec, basically
 
-        
+        //std::cout << "BSSN_WAVELET_TOL: " << bssn::BSSN_WAVELET_TOL  << std::endl;  
+
         if(pMesh->isActive())
         {
             if(!pMesh->getMPIRank())
                 printf("BH coord sep: %.8E \n",dBH);//std::cout<<"BH coord sep: "<<dBH<<std::endl;
-
-
-            double* constraint_error_ptr = constraint_violation_vec_ele.get_vec_ptr();
 
             const RefElement* refEl = pMesh->getReferenceElement();
             wavelet::WaveletEl* wrefEl = new wavelet::WaveletEl((RefElement*)refEl);
@@ -322,12 +319,11 @@ namespace bssn
                     dx_domain=domain_pt2-domain_pt1;
                     double hx[3] ={dx_domain.x(),dx_domain.y(),dx_domain.z()};
                     const double tol_ele = wavelet_tol(domain_pt1.x(),domain_pt1.y(),domain_pt1.z(),hx);
-		    if(fabs(tol_ele - BSSN_WAVELET_TOL) > 1e-9)
+                    /*if(fabs(tol_ele - BSSN_WAVELET_TOL) > 1e-9)
 		    {
                       fprintf(stderr,"tolerance is not correct\n");
 		      MPI_Abort(MPI_COMM_WORLD, -1);
-	            } 
-
+	            }*/
                     const unsigned int ln = 1u<<(m_uiMaxDepth-pNodes[ele].getLevel());
                     unsigned int punct_id = 0;
 
@@ -363,13 +359,12 @@ namespace bssn
 		    pMesh->getUnzipElementalNodalValues(unzippedcVec[varId_grad_grad2_chi_expression],blk, ele, eVecTmp.data(), true);
 
                     // computes the wavelets. 
-                    // NOTE: compute_wavelets_3D does not take the rel error min
-                    // wrefEl->compute_wavelets_3D((double*)(eVecTmp.data()),isz,wCout,isBdyOct,bssn::BSSN_REL_ERR_MIN);
+		    // wrefEl->compute_wavelets_3D((double*)(eVecTmp.data()),isz,wCout,isBdyOct,bssn::BSSN_REL_ERR_MIN);
                     wrefEl->compute_wavelets_3D((double*)(eVecTmp.data()),isz,wCout,isBdyOct);
                     wtol_val = (normL2(wCout.data(),wCout.size())) / sqrt(wCout.size());
-                    constraint_error_ptr[ele - eleLocalBegin] = wtol_val;
-                    
-                    
+		    // uncomment later !!!
+		    //constraint_error_ptr[ele] = wtol_val;
+
                     { 
 		    const unsigned int ln = 1u<<(m_uiMaxDepth-pNodes[ele].getLevel());
                     const double hx = ln/(double)(eOrder);
@@ -383,23 +378,37 @@ namespace bssn
 			if(rad2>0.8*bssn::BSSN_CURRENT_RK_COORD_TIME*bssn::BSSN_CURRENT_RK_COORD_TIME || rp < bssn::BSSN_INNER_SIS_REGION_OUTER_BOUND)
 			{
                           refine_flags[(ele-eleLocalBegin)] = OCT_IGNORE;
+			  constraint_error_ptr[ele] = 0;
 			  continue; 
 		        }
                     }
 
                     const double l_max = wtol_val;
-                    if(l_max > tol_ele )
+                    /*if(l_max > tol_ele )
                     {
                         refine_flags[(ele-eleLocalBegin)] = OCT_SPLIT;
+			constraint_error_ptr[ele] = 1;
                     }
                     else if( l_max < amr_coarse_fac *tol_ele)
                     {
                         refine_flags[(ele-eleLocalBegin)] = OCT_COARSE;
+			constraint_error_ptr[ele] = -1;
                     }
                     else
                     {
                         refine_flags[(ele-eleLocalBegin)] = OCT_NO_CHANGE;
-                    }
+			constraint_error_ptr[ele] = 0;
+                    }*/
+		    if( l_max < amr_coarse_fac *tol_ele)
+                    {
+			refine_flags[(ele-eleLocalBegin)] = OCT_COARSE;
+                        constraint_error_ptr[ele] = -1;     
+		    }
+		    else
+		    {
+                        refine_flags[(ele-eleLocalBegin)] = OCT_NO_CHANGE;
+                        constraint_error_ptr[ele] = 0;
+		    }
                         
                     
 
@@ -409,18 +418,22 @@ namespace bssn
 
             const char* cell_data_names[] = {"wtol_error"};
             unsigned int num_cell_vars = 1;
-            double* error_ptr = constraint_violation_vec_ele.get_vec_ptr();
-            const double* cell_data_pointers[] = {error_ptr};
+            const double* cell_data_pointers[] = {constraint_error_ptr};
             // DFVK NOTE: this will now save the data (hopefully)
-            std::ostringstream filename;
-            filename << BSSN_VTU_FILE_PREFIX << "_wavelet_error_" << std::setfill('0') << std::setw(5) << TEMP_BSSN_STEP_VAL;
+            if(BSSN_CURRENT_RK_STEP % BSSN_IO_OUTPUT_FREQ == 0)
+	    {
+                std::ostringstream filename;
+                filename << BSSN_VTU_FILE_PREFIX << "_wavelet_error_" << std::setfill('0') << std::setw(5) << TEMP_BSSN_STEP_VAL;
 
-            io::vtk::mesh2vtuFine(
-                pMesh, filename.str().c_str(), 0, NULL, NULL, 0, NULL, NULL, num_cell_vars, cell_data_names, cell_data_pointers,false 
-            );
+                io::vtk::mesh2vtuFine(
+                    pMesh, filename.str().c_str(), 0, NULL, NULL, 0, NULL, NULL, num_cell_vars, cell_data_names, cell_data_pointers,false 
+                );
+            }
 
             delete wrefEl;
         }
+
+	pMesh->destroyVector(constraint_error_ptr);
         return refine_flags;
     }
 

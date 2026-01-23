@@ -924,8 +924,9 @@ int BSSNCtx::restore_checkpt() {
                 m_uiTinfo._m_uiTh = checkPoint["DENDRO_TS_TIME_STEP_SIZE"];
                 m_uiElementOrder = checkPoint["DENDRO_TS_ELEMENT_ORDER"];
 
-                bssn::BSSN_WAVELET_TOL =
-                    checkPoint["DENDRO_TS_WAVELET_TOLERANCE"];
+                //bssn::BSSN_WAVELET_TOL =
+                    //checkPoint["DENDRO_TS_WAVELET_TOLERANCE"];
+		//bssn::BSSN_WAVELET_TOL = 1e-5;
                 bssn::BSSN_LOAD_IMB_TOL =
                     checkPoint["DENDRO_TS_LOAD_IMB_TOLERANCE"];
 
@@ -976,7 +977,8 @@ int BSSNCtx::restore_checkpt() {
             m_uiTinfo._m_uiTh = checkPoint["DENDRO_TS_TIME_STEP_SIZE"];
             m_uiElementOrder = checkPoint["DENDRO_TS_ELEMENT_ORDER"];
 
-            bssn::BSSN_WAVELET_TOL = checkPoint["DENDRO_TS_WAVELET_TOLERANCE"];
+            //bssn::BSSN_WAVELET_TOL = checkPoint["DENDRO_TS_WAVELET_TOLERANCE"];
+            //bssn::BSSN_WAVELET_TOL = 1e-5;
             bssn::BSSN_LOAD_IMB_TOL =
                 checkPoint["DENDRO_TS_LOAD_IMB_TOLERANCE"];
 
