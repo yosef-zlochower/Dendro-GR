@@ -319,6 +319,7 @@ namespace bssn
                     pMesh->octCoordToDomainCoord(oct_pt1,domain_pt1);
                     pMesh->octCoordToDomainCoord(oct_pt2,domain_pt2);
                     dx_domain=domain_pt2-domain_pt1;
+		    const unsigned int ln = 1u<<(m_uiMaxDepth-pNodes[ele].getLevel());
                     double hx[3] ={dx_domain.x(),dx_domain.y(),dx_domain.z()};
                     const double tol_ele = wavelet_tol(domain_pt1.x(),domain_pt1.y(),domain_pt1.z(),hx);
                     /*if(fabs(tol_ele - BSSN_WAVELET_TOL) > 1e-9)
@@ -367,16 +368,25 @@ namespace bssn
 		    // uncomment later !!!
 		    //constraint_error_ptr[ele] = wtol_val;
 
+                    { 
+		    const unsigned int ln = 1u<<(m_uiMaxDepth-pNodes[ele].getLevel());
                     const double hx = ln/(double)(eOrder);
-                    const double x = pNodes[ele].minX() + eOrder/2*hx;
-                    const double y = pNodes[ele].minY() + eOrder/2*hx;
-                    const double z = pNodes[ele].minZ() + eOrder/2*hx;
-                    const Point oct_mid = Point(x,y,z);
-                    Point tmp;
-                    pMesh->octCoordToDomainCoord(oct_mid,tmp);
-		    const double rad2 = tmp.x()*tmp.x()+tmp.y()*tmp.y()+tmp.z()*tmp.z();
+                        const double x = pNodes[ele].minX() + eOrder/2*hx;
+                        const double y = pNodes[ele].minY() + eOrder/2*hx;
+                        const double z = pNodes[ele].minZ() + eOrder/2*hx;
+                        const Point oct_mid = Point(x,y,z);
+                        Point tmp;
+                        pMesh->octCoordToDomainCoord(oct_mid,tmp);
+		        const double rad2 = tmp.x()*tmp.x()+tmp.y()*tmp.y()+tmp.z()*tmp.z();
+			if(rad2>0.8*bssn::BSSN_CURRENT_RK_COORD_TIME*bssn::BSSN_CURRENT_RK_COORD_TIME || rp < bssn::BSSN_INNER_SIS_REGION_OUTER_BOUND)
+			{
+                          refine_flags[(ele-eleLocalBegin)] = OCT_IGNORE;
+			  continue; 
+		        }
+                    }
 
                     // all refinement flag logic needs to happen within this for loop to know relevant value of level 
+		    int level_difference;
 		    for (int level = 0; level < bssn::BSSN_BOX_NUM_LEVELS[punct_id]; level ++)
                     {
                       if (rp >= bssn_box_radii_at[punct_id][level])
