@@ -258,6 +258,8 @@ namespace bssn
         bool isOctChange_g =false;
         Point d1, d2, temp;
 
+        const double * bssn_box_radii_at[] = {bssn::BSSN_BOX_RADII_1, bssn::BSSN_BOX_RADII_2};
+
         const unsigned int eOrder = pMesh->getElementOrder();
         const double dBH = (BSSN_BH_LOC[0]-BSSN_BH_LOC[1]).abs();
         const unsigned int refLevMin = std::min(bssn::BSSN_BH1_MAX_LEV,bssn::BSSN_BH2_MAX_LEV);
@@ -365,31 +367,43 @@ namespace bssn
 		    // uncomment later !!!
 		    //constraint_error_ptr[ele] = wtol_val;
 
-                    { 
 		    const unsigned int ln = 1u<<(m_uiMaxDepth-pNodes[ele].getLevel());
                     const double hx = ln/(double)(eOrder);
-                        const double x = pNodes[ele].minX() + eOrder/2*hx;
-                        const double y = pNodes[ele].minY() + eOrder/2*hx;
-                        const double z = pNodes[ele].minZ() + eOrder/2*hx;
-                        const Point oct_mid = Point(x,y,z);
-                        Point tmp;
-                        pMesh->octCoordToDomainCoord(oct_mid,tmp);
-		        const double rad2 = tmp.x()*tmp.x()+tmp.y()*tmp.y()+tmp.z()*tmp.z();
-			if(rad2>0.8*bssn::BSSN_CURRENT_RK_COORD_TIME*bssn::BSSN_CURRENT_RK_COORD_TIME || rp < bssn::BSSN_INNER_SIS_REGION_OUTER_BOUND)
-			{
-                          refine_flags[(ele-eleLocalBegin)] = OCT_IGNORE;
-			  constraint_error_ptr[ele] = 0;
-			  continue; 
-		        }
+                    const double x = pNodes[ele].minX() + eOrder/2*hx;
+                    const double y = pNodes[ele].minY() + eOrder/2*hx;
+                    const double z = pNodes[ele].minZ() + eOrder/2*hx;
+                    const Point oct_mid = Point(x,y,z);
+                    Point tmp;
+                    pMesh->octCoordToDomainCoord(oct_mid,tmp);
+		    const double rad2 = tmp.x()*tmp.x()+tmp.y()*tmp.y()+tmp.z()*tmp.z();
+
+                    // all refinement flag logic needs to happen within this for loop to know relevant value of level 
+		    for (int level = 0; level < bssn::BSSN_BOX_NUM_LEVELS[punct_id]; level ++)
+                    {
+                      if (rp >= bssn_box_radii_at[punct_id][level])
+                      {
+                        level_difference = (pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1) > (bssn::BSSN_MINDEPTH_SIS + level)
+                        // OCT_IGNORE FLAGS SET HERE
+                        if(rad2>0.8*bssn::BSSN_CURRENT_RK_COORD_TIME*bssn::BSSN_CURRENT_RK_COORD_TIME || rp < bssn::BSSN_INNER_SIS_REGION_OUTER_BOUND std::abs(level_difference) > 1)
+                        {
+                            refine_flags[(ele-eleLocalBegin)] = OCT_IGNORE;
+                            constraint_error_ptr[ele] = 0;
+                            continue; 
+                        }                        
+                        
+                        // continue work here 
+                        
+                        break;
+                      }  
                     }
 
                     const double l_max = wtol_val;
-                    /*if(l_max > tol_ele )
+                    if(l_max > tol_ele)
                     {
                         refine_flags[(ele-eleLocalBegin)] = OCT_SPLIT;
 			constraint_error_ptr[ele] = 1;
                     }
-                    else if( l_max < amr_coarse_fac *tol_ele)
+                    else if(l_max < amr_coarse_fac *tol_ele)
                     {
                         refine_flags[(ele-eleLocalBegin)] = OCT_COARSE;
 			constraint_error_ptr[ele] = -1;
@@ -398,20 +412,8 @@ namespace bssn
                     {
                         refine_flags[(ele-eleLocalBegin)] = OCT_NO_CHANGE;
 			constraint_error_ptr[ele] = 0;
-                    }*/
-		    if( l_max < amr_coarse_fac *tol_ele)
-                    {
-			refine_flags[(ele-eleLocalBegin)] = OCT_COARSE;
-                        constraint_error_ptr[ele] = -1;     
-		    }
-		    else
-		    {
-                        refine_flags[(ele-eleLocalBegin)] = OCT_NO_CHANGE;
-                        constraint_error_ptr[ele] = 0;
-		    }
-                        
+                    }
                     
-
                 }
 
             }
