@@ -383,68 +383,14 @@ namespace bssn
                     {
                         refine_flags[(ele-eleLocalBegin)] = OCT_IGNORE;
                         constraint_error_ptr[ele] = 0;
-                        break; 
+                        continue; 
                     }
-		    else
-		    {
-                        int level_difference;
-		        for (int level = 0; level < bssn::BSSN_BOX_NUM_LEVELS[punct_id]; level ++)
-                        {
-                          if (rp >= bssn_box_radii_at[punct_id][level])
-                          {
-                            level_difference = (pNodes[(ele-eleLocalBegin)].getLevel() + MAXDEAPTH_LEVEL_DIFF +1) - (bssn::BSSN_MINDEPTH_SIS + level);
-                            // WAMR FLAGS SET HERE 
-                            const double l_max = wtol_val;
-                            if(l_max > tol_ele)
-                            {
-                                refine_flags[(ele-eleLocalBegin)] = OCT_SPLIT;
-			        constraint_error_ptr[ele] = 1;
-                            }
-                            else if(l_max < amr_coarse_fac *tol_ele)
-                            {
-                                refine_flags[(ele-eleLocalBegin)] = OCT_COARSE;
-			        constraint_error_ptr[ele] = -1;
-                            }
-                            else
-                            {
-                                refine_flags[(ele-eleLocalBegin)] = OCT_NO_CHANGE;
-			        constraint_error_ptr[ele] = 0;
-                            }
-		            // RESTRICTIONS ON WAMR FLAGS SET HERE
-                            if(level_difference < -1)
-			    {
-			        refine_flags[(ele-eleLocalBegin)] = OCT_SPLIT;
-			        constraint_error_ptr[ele] = 1;
-			    }	
-			    if(level_difference > 1)
-			    {
-			        refine_flags[(ele-eleLocalBegin)] = OCT_COARSE;
-			        constraint_error_ptr[ele] = -1;
-			    }
-			    if(level_difference == -1 && refine_flags[(ele-eleLocalBegin)] == OCT_COARSE)
-			    {
-			        refine_flags[(ele-eleLocalBegin)] = OCT_NO_CHANGE;
-			        constraint_error_ptr[ele] = 0;
-			    }
-			    if(level_difference == 1 && refine_flags[(ele-eleLocalBegin)] == OCT_SPLIT)
-			    {
-			        refine_flags[(ele-eleLocalBegin)] = OCT_NO_CHANGE;
-			        constraint_error_ptr[ele] = 0;
-			    }
-			
-                            break;
-                          }  
-
-                        } 
-		    }
-		    /*
-                    // WAMR refinement flag logic needs to happen within this for loop to know relevant value of level 
-		    int level_difference;
+                    int level_difference;
 		    for (int level = 0; level < bssn::BSSN_BOX_NUM_LEVELS[punct_id]; level ++)
                     {
                       if (rp >= bssn_box_radii_at[punct_id][level])
                       {
-                        level_difference = (pNodes[ele].getLevel() + MAXDEAPTH_LEVEL_DIFF +1) - (bssn::BSSN_MINDEPTH_SIS + level);
+                        level_difference = (pNodes[(ele-eleLocalBegin)].getLevel() + MAXDEAPTH_LEVEL_DIFF +1) - (bssn::BSSN_MINDEPTH_SIS + level);
                         // WAMR FLAGS SET HERE 
                         const double l_max = wtol_val;
                         if(l_max > tol_ele)
@@ -467,12 +413,12 @@ namespace bssn
 			{
 			    refine_flags[(ele-eleLocalBegin)] = OCT_SPLIT;
 			    constraint_error_ptr[ele] = 1;
-			}	
+	                }	
 			if(level_difference > 1)
 			{
 			    refine_flags[(ele-eleLocalBegin)] = OCT_COARSE;
 			    constraint_error_ptr[ele] = -1;
-			}
+	                }
 			if(level_difference == -1 && refine_flags[(ele-eleLocalBegin)] == OCT_COARSE)
 			{
 			    refine_flags[(ele-eleLocalBegin)] = OCT_NO_CHANGE;
@@ -487,8 +433,8 @@ namespace bssn
                         break;
                       }  
 
-                    }*/
-
+                    } 
+		    
                 }
 
             }
