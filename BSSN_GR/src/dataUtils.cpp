@@ -367,8 +367,8 @@ namespace bssn
 		    // uncomment later !!!
 		    //constraint_error_ptr[ele] = wtol_val;
 
-		    const double rad2 = 0;
-                    { 
+                    const double rad2 = 0; 
+		    {
 		    const unsigned int ln = 1u<<(m_uiMaxDepth-pNodes[ele].getLevel());
                     const double hx = ln/(double)(eOrder);
                         const double x = pNodes[ele].minX() + eOrder/2*hx;
@@ -378,7 +378,8 @@ namespace bssn
                         Point tmp;
                         pMesh->octCoordToDomainCoord(oct_mid,tmp);
 		        const double rad2 = tmp.x()*tmp.x()+tmp.y()*tmp.y()+tmp.z()*tmp.z();
-                    }
+		    }
+
                     if(rad2>0.8*bssn::BSSN_CURRENT_RK_COORD_TIME*bssn::BSSN_CURRENT_RK_COORD_TIME || rp < bssn::BSSN_INNER_SIS_REGION_OUTER_BOUND)
                     {
                         refine_flags[(ele-eleLocalBegin)] = OCT_IGNORE;
@@ -390,44 +391,44 @@ namespace bssn
                     {
                       if (rp >= bssn_box_radii_at[punct_id][level])
                       {
-                        level_difference = (pNodes[(ele-eleLocalBegin)].getLevel() + MAXDEAPTH_LEVEL_DIFF +1) - (bssn::BSSN_MINDEPTH_SIS + level);
+                        level_difference = (int)(pNodes[(ele)].getLevel() + MAXDEAPTH_LEVEL_DIFF +1) - (int)(bssn::BSSN_MINDEPTH_SIS + level);
                         // WAMR FLAGS SET HERE 
                         const double l_max = wtol_val;
                         if(l_max > tol_ele)
                         {
                             refine_flags[(ele-eleLocalBegin)] = OCT_SPLIT;
-			    constraint_error_ptr[ele] = 1;
+			    constraint_error_ptr[(ele-eleLocalBegin)] = 1;
                         }
                         else if(l_max < amr_coarse_fac *tol_ele)
                         {
                             refine_flags[(ele-eleLocalBegin)] = OCT_COARSE;
-			    constraint_error_ptr[ele] = -1;
+			    constraint_error_ptr[(ele-eleLocalBegin)] = -1;
                         }
                         else
                         {
                             refine_flags[(ele-eleLocalBegin)] = OCT_NO_CHANGE;
-			    constraint_error_ptr[ele] = 0;
+			    constraint_error_ptr[(ele-eleLocalBegin)] = 0;
                         }
 		        // RESTRICTIONS ON WAMR FLAGS SET HERE
                         if(level_difference < -1)
 			{
 			    refine_flags[(ele-eleLocalBegin)] = OCT_SPLIT;
-			    constraint_error_ptr[ele] = 1;
+			    constraint_error_ptr[(ele-eleLocalBegin)] = 1;
 	                }	
 			if(level_difference > 1)
 			{
 			    refine_flags[(ele-eleLocalBegin)] = OCT_COARSE;
-			    constraint_error_ptr[ele] = -1;
+			    constraint_error_ptr[(ele-eleLocalBegin)] = -1;
 	                }
 			if(level_difference == -1 && refine_flags[(ele-eleLocalBegin)] == OCT_COARSE)
 			{
 			    refine_flags[(ele-eleLocalBegin)] = OCT_NO_CHANGE;
-			    constraint_error_ptr[ele] = 0;
+			    constraint_error_ptr[(ele-eleLocalBegin)] = 0;
 			}
 			if(level_difference == 1 && refine_flags[(ele-eleLocalBegin)] == OCT_SPLIT)
 			{
 			    refine_flags[(ele-eleLocalBegin)] = OCT_NO_CHANGE;
-			    constraint_error_ptr[ele] = 0;
+			    constraint_error_ptr[(ele-eleLocalBegin)] = 0;
 			}
 			
                         break;
