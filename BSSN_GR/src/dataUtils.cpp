@@ -386,55 +386,73 @@ namespace bssn
                         constraint_error_ptr[ele] = 0;
                         continue; 
                     }
+
                     int level_difference;
 		    for (int level = 0; level < bssn::BSSN_BOX_NUM_LEVELS[punct_id]; level ++)
                     {
                       if (rp >= bssn_box_radii_at[punct_id][level])
                       {
                         level_difference = (int)(pNodes[(ele)].getLevel() + MAXDEAPTH_LEVEL_DIFF +1) - (int)(bssn::BSSN_MINDEPTH_SIS + level);
-                        // WAMR FLAGS SET HERE 
-                        const double l_max = wtol_val;
-                        if(l_max > tol_ele)
-                        {
-                            refine_flags[(ele-eleLocalBegin)] = OCT_SPLIT;
-			    constraint_error_ptr[(ele-eleLocalBegin)] = 1;
-                        }
-                        else if(l_max < amr_coarse_fac *tol_ele)
-                        {
-                            refine_flags[(ele-eleLocalBegin)] = OCT_COARSE;
-			    constraint_error_ptr[(ele-eleLocalBegin)] = -1;
-                        }
-                        else
-                        {
-                            refine_flags[(ele-eleLocalBegin)] = OCT_NO_CHANGE;
-			    constraint_error_ptr[(ele-eleLocalBegin)] = 0;
-                        }
-		        // RESTRICTIONS ON WAMR FLAGS SET HERE
-                        if(level_difference < -1)
-			{
-			    refine_flags[(ele-eleLocalBegin)] = OCT_SPLIT;
-			    constraint_error_ptr[(ele-eleLocalBegin)] = 1;
-	                }	
-			if(level_difference > 1)
-			{
-			    refine_flags[(ele-eleLocalBegin)] = OCT_COARSE;
-			    constraint_error_ptr[(ele-eleLocalBegin)] = -1;
-	                }
-			if(level_difference == -1 && refine_flags[(ele-eleLocalBegin)] == OCT_COARSE)
-			{
-			    refine_flags[(ele-eleLocalBegin)] = OCT_NO_CHANGE;
-			    constraint_error_ptr[(ele-eleLocalBegin)] = 0;
-			}
-			if(level_difference == 1 && refine_flags[(ele-eleLocalBegin)] == OCT_SPLIT)
-			{
-			    refine_flags[(ele-eleLocalBegin)] = OCT_NO_CHANGE;
-			    constraint_error_ptr[(ele-eleLocalBegin)] = 0;
-			}
-			
-                        break;
-                      }  
+		      }
+                    }
+		      
+		    unsigned int refine_flag_temp;
+		    int refine_flag_visual_temp;
+                    const double l_max = wtol_val;
+		    if(l_max > tol_ele)
+                    {
+                        //refine_flags[(ele-eleLocalBegin)] = OCT_SPLIT;
+		        //constraint_error_ptr[ele] = 1;
+			refine_flag_temp = OCT_SPLIT;
+			refine_flag_visual_temp = 1;
+                    }
+                    else if(l_max < amr_coarse_fac *tol_ele)
+                    {
+                        //refine_flags[(ele-eleLocalBegin)] = OCT_COARSE;
+                  	//constraint_error_ptr[ele] = -1;
+			refine_flag_temp = OCT_COARSE;
+			refine_flag_visual_temp = -1;
+                    }
+                    else
+                    {
+                        //refine_flags[(ele-eleLocalBegin)] = OCT_NO_CHANGE;
+			//constraint_error_ptr[ele] = 0;
+			refine_flag_temp = OCT_NO_CHANGE;
+			refine_flag_visual_temp = 0;
+                    }
+		      
+		    // RESTRICTIONS ON WAMR FLAGS SET HERE
+                    if(level_difference < -1)
+	            {
+			//refine_flags[(ele-eleLocalBegin)] = OCT_SPLIT;
+			//constraint_error_ptr[ele] = 1;
+			refine_flag_temp = OCT_SPLIT;
+			refine_flag_visual_temp = 1;
+	            }	
+	            if(level_difference > 1)
+		    {
+		        //refine_flags[(ele-eleLocalBegin)] = OCT_COARSE;
+			//constraint_error_ptr[ele] = -1;
+			refine_flag_temp = OCT_COARSE;
+			refine_flag_visual_temp = -1;
+	            }
+		    if(level_difference == -1 && refine_flags[(ele-eleLocalBegin)] == OCT_COARSE)
+	            {
+			//refine_flags[(ele-eleLocalBegin)] = OCT_NO_CHANGE;
+			//constraint_error_ptr[ele] = 0;
+			refine_flag_temp = OCT_NO_CHANGE;
+			refine_flag_visual_temp = 0;
+	            }
+	            if(level_difference == 1 && refine_flags[(ele-eleLocalBegin)] == OCT_SPLIT)
+	            {
+			//refine_flags[(ele-eleLocalBegin)] = OCT_NO_CHANGE;
+			//constraint_error_ptr[ele] = 0;
+			refine_flag_temp = OCT_NO_CHANGE;
+			refine_flag_visual_temp = 0;
+	            }
 
-                    } 
+		    refine_flags[(ele-eleLocalBegin)] = refine_flag_temp;
+		    constraint_error_ptr[ele] = refine_flag_visual_temp;
 		    
                 }
 
