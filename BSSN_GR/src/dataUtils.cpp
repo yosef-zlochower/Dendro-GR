@@ -381,6 +381,7 @@ namespace bssn
                         {
                             refine_flags[(ele-eleLocalBegin)] = OCT_IGNORE;
                             constraint_error_ptr[ele] = 0;
+			    //std::cout<<"OCT_IGNORE: NOT IN WAMR REGION\n"<<std::endl;
                             continue;
                         }
 		    }
@@ -392,16 +393,19 @@ namespace bssn
                     {
 			refine_flag_temp = OCT_SPLIT;
 			refine_flag_visual_temp = 1;
+			//std::cout<<"OCT_SPLIT"<<std::endl;
                     }
                     else if(l_max < amr_coarse_fac *tol_ele)
                     {
 			refine_flag_temp = OCT_COARSE;
 			refine_flag_visual_temp = -1;
+			//std::cout<<"OCT_COARSE"<<std::endl;
                     }
                     else
                     {
 			refine_flag_temp = OCT_NO_CHANGE;
 			refine_flag_visual_temp = 0;
+			//std::cout<<"OCT_NO_CHANGE"<<std::endl;
                     }
 		    
 		    int level_difference;
@@ -409,30 +413,36 @@ namespace bssn
                     {
                       if (rp >= bssn_box_radii_at[punct_id][level])
                       {
-                        level_difference = (int)(pNodes[(ele)].getLevel() + MAXDEAPTH_LEVEL_DIFF +1) - (int)(bssn::BSSN_MINDEPTH_SIS + level);
+                        level_difference = (int)(pNodes[(ele)].getLevel() + MAXDEAPTH_LEVEL_DIFF + 1) - (int)(bssn::BSSN_MINDEPTH_SIS + level);
 			break;
 		      }
                     }
-		      
+
+		    //std::cout<<"level difference: "<<level_difference<<std::endl;
+
                     if(level_difference < -1)
 	            {
 			refine_flag_temp = OCT_SPLIT;
 			refine_flag_visual_temp = 1;
+			//std::cout<<"replaced with OCT_SPLIT\n"<<std::endl;
 	            }	
 	            if(level_difference > 1)
 		    {
 			refine_flag_temp = OCT_COARSE;
 			refine_flag_visual_temp = -1;
+			//std::cout<<"replaced with OCT_COARSE\n"<<std::endl;
 	            }
-		    if(level_difference == -1 && refine_flags[(ele-eleLocalBegin)] == OCT_COARSE)
+		    if(level_difference == -1 && refine_flag_temp == OCT_COARSE)
 	            {
 			refine_flag_temp = OCT_NO_CHANGE;
 			refine_flag_visual_temp = 0;
+			//std::cout<<"replaced with OCT_NO_CHANGE\n"<<std::endl;
 	            }
-	            if(level_difference == 1 && refine_flags[(ele-eleLocalBegin)] == OCT_SPLIT)
+	            if(level_difference == 1 && refine_flag_temp == OCT_SPLIT)
 	            {
 			refine_flag_temp = OCT_NO_CHANGE;
 			refine_flag_visual_temp = 0;
+			//std::cout<<"replaced with OCT_NO_CHANGE\n"<<std::endl;
 	            }
 
 		    refine_flags[(ele-eleLocalBegin)] = refine_flag_temp;
