@@ -5,13 +5,12 @@
  * @date 2021-02-12
  *
  */
-#include <stdio.h>
-#include <time.h>
-
 #include <iostream>
 #include <vector>
 
 #include "TreeNode.h"
+#include "aeh.h"
+#include "bssnAEH.h"
 #include "bssnCtx.h"
 #include "gr.h"
 #include "grUtils.h"
@@ -22,12 +21,6 @@
 #include "parameters.h"
 #include "rkBSSN.h"
 #include "sdc.h"
-void printtime(void) {
-    time_t t     = time(0);
-    struct tm tm = *localtime(&t);
-    printf("now: \n%d-%02d-%02d %02d:%02d:%02d\n", tm.tm_year + 1900,
-           tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
-}
 
 int main(int argc, char** argv) {
     // 0- NUTS 1-UTS
@@ -60,6 +53,25 @@ int main(int argc, char** argv) {
     MPI_Comm_size(comm, &npes);
 
     const double start_time = MPI_Wtime();
+
+    if (!rank) {
+        std::cout << "======================================" << std::endl;
+        std::cout << GRN << ":::: Now initializing BSSN Solver ::::" << NRM
+                  << std::endl;
+        if (ts_mode == 0) {
+            std::cout << YLW
+                      << "      - Running with the Non-Uniform/Spatially "
+                         "Adaptive Time Stepper (NUTS/SATS)"
+                      << NRM << std::endl;
+        } else {
+            std::cout << YLW
+                      << "      - Running with the Uniform Time Stepper (UTS)"
+                      << NRM << std::endl;
+        }
+
+        std::cout << "======================================" << std::endl;
+    }
+
     // Print out CMAKE options
     if (!rank) {
 #ifdef BSSN_COMPUTE_CONSTRAINTS
@@ -169,13 +181,9 @@ bssn:
         MPI_Abort(comm, 0);
     }
 
-    if (bssn::BSSN_GW_EXTRACT_FREQ > bssn::BSSN_IO_OUTPUT_FREQ) {
-        if (!rank)
-            std::cout
-                << " BSSN_GW_EXTRACT_FREQ  should be less BSSN_IO_OUTPUT_FREQ "
-                << std::endl;
-        MPI_Abort(comm, 0);
-    }
+    // NOTE: this is where we originally had the check that Extract freq needed
+    // to be greater than IO freq, but decoupling the parameters means that this
+    // isn't "required", even though it's probably recommended.
 
     // 2. generate the initial grid.
     std::vector<ot::TreeNode> tmpNodes;
@@ -283,6 +291,13 @@ bssn:
                      "======================================================"
                   << std::endl;
     }
+
+    // calculate the minimum dx
+    bssn::BSSN_CURRENT_MIN_DX =
+        ((bssn::BSSN_COMPD_MAX[0] - bssn::BSSN_COMPD_MIN[0]) *
+         ((1u << (m_uiMaxDepth - lmax)) / ((double)bssn::BSSN_ELE_ORDER)) /
+         ((double)(1u << (m_uiMaxDepth))));
+
     bssn::BSSN_RK45_TIME_STEP_SIZE =
         bssn::BSSN_CFL_FACTOR *
         ((bssn::BSSN_COMPD_MAX[0] - bssn::BSSN_COMPD_MIN[0]) *
@@ -291,6 +306,9 @@ bssn:
     tmpNodes.clear();
 
     if (ts_mode == 1) {
+        if (!rank)
+            std::cout << GRN << "Now setting up the uniform time stepper!"
+                      << NRM << std::endl;
         bssn::BSSNCtx* bssnCtx = new bssn::BSSNCtx(mesh);
         ts::ETS<DendroScalar, bssn::BSSNCtx>* ets =
             new ts::ETS<DendroScalar, bssn::BSSNCtx>(bssnCtx);
@@ -331,6 +349,8 @@ bssn:
         double t1                            = MPI_Wtime();
         bool already_checkpointed_in_this_it = false;
 
+        bssnaeh::initialize_aeh();
+
         {
             FILE* f = fopen("start.at_now", "w");
             fprintf(f, "started\n");
@@ -341,37 +361,94 @@ bssn:
         double sim_interval_start   = ets->curr_time();
         const double init_time      = ets->curr_time();
 
+        // capture the curr step
+        const DendroIntL start_step = ets->curr_step();
+
         while (ets->curr_time() < bssn::BSSN_RK_TIME_END) {
             const DendroIntL step            = ets->curr_step();
             const DendroScalar time          = ets->curr_time();
 
-            // TEMP: set debug temporary step for global purposes
-            bssn::TEMP_BSSN_STEP_VAL = ets->curr_step();
-
             bssn::BSSN_CURRENT_RK_COORD_TIME = time;
             bssn::BSSN_CURRENT_RK_STEP       = step;
+
+            // TEMP: set debug temporary step for global purposes
+            bssn::TEMP_BSSN_STEP_VAL = ets->curr_step();
 
             const bool isActive              = ets->is_active();
             const unsigned int rank_global   = ets->get_global_rank();
 
-            const bool is_merged             = bssnCtx->is_bh_merged(0.1);
+            // things that should happen **only** on time step 0
+            if (step == 0) {
+                if (!rank_global) {
+                    std::cout << BLU
+                              << "[ETS] : Timestep 0 - ensuring a few things "
+                                 "are taken care of..."
+                              << NRM << std::endl;
+                }
+                // for our scaling operation, we want to make sure that the
+                // constraints are computed and handled
+                bssnCtx->compute_constraint_variables();
+
+                // make sure we write about the grid size at time 0
+                bssnCtx->write_grid_summary_data();
+
+                if (!rank_global) {
+                    std::cout << BLU
+                              << "[ETS] : Timestep 0 - Finished with things "
+                                 "that should always be done at time 0!"
+                              << NRM << std::endl;
+                }
+            }
+
+            // on restore, but only on restore and not at the beginning
+            if (step != 0 && step == start_step) {
+                if (!rank_global)
+                    std::cout << BLD << GRN
+                              << "[ETS] : CHECKPOINT RESTORED. Doing "
+                                 "additional cleanup.\n"
+                              << NRM << std::endl;
+                // there's no guarantee that the constraints will be computed
+                // right on restore, due to the timing. we still need them
+                // populated with "good" data
+                bssnCtx->compute_constraint_variables();
+            }
+
+            const bool is_merged = bssnCtx->is_bh_merged(0.1);
             if (is_merged) {
+                // make sure we set that bh is merged!
+                // NOTE: don't worry, this won't update the bssn ctx object
+                // after the first time, unless something modifies another
+                // internal variable
+                bssnCtx->set_is_merged(time, step);
+
                 // bssn::BSSN_REMESH_TEST_FREQ=3 *
                 // bssn::BSSN_REMESH_TEST_FREQ_AFTER_MERGER;
                 // bssn::BSSN_MINDEPTH=5;
+                // TODO: make BSSN refinement mode POST MERGER an option!
+
+                // wkb 5 Sept 2024: disable these two lines
+                // so I can test other refinement modes
+                // bssn::BSSN_REFINEMENT_MODE = bssn::RefinementMode::WAMR;
+                // bssn::BSSN_USE_WAVELET_TOL_FUNCTION = 1;
                 bssn::BSSN_REMESH_TEST_FREQ =
                     bssn::BSSN_REMESH_TEST_FREQ_AFTER_MERGER;
                 bssn::BSSN_GW_EXTRACT_FREQ =
                     bssn::BSSN_GW_EXTRACT_FREQ_AFTER_MERGER;
+
+                // ONLY ENABLE CAKO DURING MERGER
+                if (bssn::BSSN_KO_SIGMA_SCALE_BY_CONFORMAL_POST_MERGER_ONLY) {
+                    bssn::BSSN_CAKO_ENABLED = true;
+                }
             }
 
             if ((step % bssn::BSSN_REMESH_TEST_FREQ) == 0) {
                 already_checkpointed_in_this_it = false;
-		bssnCtx->calc_constraints();
-                bool isRemesh                   = bssnCtx->is_remesh();
+                bssnCtx->compute_constraint_variables();
+                bool isRemesh = bssnCtx->is_remesh();
                 if (isRemesh) {
                     if (!rank_global)
-                        std::cout << "[ETS] : Remesh is triggered.  \n";
+                        std::cout << YLW << "[ETS] : Remesh is triggered."
+                                  << NRM << std::endl;
 
                     bssnCtx->remesh_and_gridtransfer(bssn::BSSN_DENDRO_GRAIN_SZ,
                                                      bssn::BSSN_LOAD_IMB_TOL,
@@ -379,14 +456,22 @@ bssn:
                     bssn::deallocate_bssn_deriv_workspace();
                     bssn::allocate_bssn_deriv_workspace(bssnCtx->get_mesh(), 1);
                     ets->sync_with_mesh();
+                    bssnCtx->calculate_full_grid_size();
 
                     ot::Mesh* pmesh = bssnCtx->get_mesh();
                     unsigned int lmin, lmax;
                     pmesh->computeMinMaxLevel(lmin, lmax);
-                    if (!pmesh->getMPIRank())
-                    {
-                        printf("post merger grid level = (%d, %d)\n", lmin, lmax);
-                    }
+                    if (!pmesh->getMPIRankGlobal())
+                        printf("post merger grid level = (%d, %d)\n", lmin,
+                               lmax);
+
+                    // calculate the minimum dx
+                    bssn::BSSN_CURRENT_MIN_DX =
+                        ((bssn::BSSN_COMPD_MAX[0] - bssn::BSSN_COMPD_MIN[0]) *
+                         ((1u << (m_uiMaxDepth - lmax)) /
+                          ((double)bssn::BSSN_ELE_ORDER)) /
+                         ((double)(1u << (m_uiMaxDepth))));
+
                     bssn::BSSN_RK45_TIME_STEP_SIZE =
                         bssn::BSSN_CFL_FACTOR *
                         ((bssn::BSSN_COMPD_MAX[0] - bssn::BSSN_COMPD_MIN[0]) *
@@ -396,22 +481,76 @@ bssn:
                     ts::TSInfo ts_in = bssnCtx->get_ts_info();
                     ts_in._m_uiTh    = bssn::BSSN_RK45_TIME_STEP_SIZE;
                     bssnCtx->set_ts_info(ts_in);
+
+                    // REMEMBER: the true max depth of the array is two minus
+                    // m_uiMaxDepth
+                    if (bssn::BSSN_SCALE_VTU_AND_GW_EXTRACTION) {
+                        // REMEMBER: the true max depth of the array is two
+                        // minus m_uiMaxDepth
+                        bssn::BSSN_IO_OUTPUT_FREQ_TRUE =
+                            bssn::BSSN_IO_OUTPUT_FREQ >>
+                            (m_uiMaxDepth - 2 - lmax);
+                        bssn::BSSN_GW_EXTRACT_FREQ_TRUE =
+                            bssn::BSSN_GW_EXTRACT_FREQ >>
+                            (m_uiMaxDepth - 2 - lmax);
+                        if (!rank_global)
+                            std::cout << "    IO Output Freq updated to: "
+                                      << bssn::BSSN_IO_OUTPUT_FREQ_TRUE
+                                      << " | GW Output Freq updated to: "
+                                      << bssn::BSSN_GW_EXTRACT_FREQ_TRUE
+                                      << std::endl;
+                    }
+
+                    if (!rank_global) {
+                        std::cout << GRN << "[ETS] : Remesh sequence finished"
+                                  << NRM << std::endl;
+                    }
+
+                    // compute the constraint variables to "refresh" them on the
+                    // grid for potential RHS updates
+                    bssnCtx->compute_constraint_variables();
                 }
+
+                // write the grid summary data whether or not the remesh
+                // happened
+                bssnCtx->write_grid_summary_data();
             }
 
-            if ((step % bssn::BSSN_GW_EXTRACT_FREQ) == 0) {
-                if (!rank_global) {
-                    std::cout
-                        << "[ETS] : Executing step :  " << ets->curr_step()
-                        << "\tcurrent time :" << ets->curr_time()
-                        << "\t dt:" << ets->ts_size() << "\t" << std::endl;
-                    printtime();
-                }
+            if ((step % bssn::BSSN_TIME_STEP_OUTPUT_FREQ) == 0) {
+                if (!rank_global)
+                    std::cout << BLD << GRN << "[ETS - BSSN] : SOLVER UPDATE\n"
+                              << NRM << "\tCurrent Step: " << ets->curr_step()
+                              << "\t\tCurrent time: " << ets->curr_time()
+                              << "\tdt: " << ets->ts_size() << "\t"
+                              << std::endl;
+
                 bssnCtx->terminal_output();
+            }
+
+            if ((step % bssn::BSSN_GW_EXTRACT_FREQ_TRUE) == 0) {
+                if (!rank_global)
+                    std::cout << "    Now extracting constraints and GW."
+                              << std::endl;
+
+                // evolving the black holes always stores the updated
+                // information
+                bssnCtx->evolve_bh_loc();
+                bssnCtx->extract_constraints();
+                bssnCtx->extract_gravitational_waves();
+            }
+
+            if ((step % bssn::BSSN_IO_OUTPUT_FREQ_TRUE) == 0) {
+                // this is all IO output, except for extracting the GW waves,
+                // which are "independent"
+
+                // write to vtu, which includes writing the BH location data
                 bssnCtx->write_vtu();
-                bssnCtx->evolve_bh_loc(
-                    bssnCtx->get_evolution_vars(),
-                    ets->ts_size() * bssn::BSSN_GW_EXTRACT_FREQ);
+                bssnCtx->write_bh_coords();
+            }
+
+            if ((AEH::AEH_SOLVER_FREQ > 0) &&
+                (step % AEH::AEH_SOLVER_FREQ) == 0) {
+                bssnaeh::perform_aeh_step(bssnCtx, rank);
             }
 
             if ((step % bssn::BSSN_CHECKPT_FREQ) == 0) {
@@ -470,13 +609,17 @@ bssn:
         double t2_g;
         par::Mpi_Allreduce(&t2, &t2_g, 1, MPI_MAX, ets->get_global_comm());
         if (!(ets->get_global_rank()))
-	{
+        {
             std::cout << " ETS time (max) : " << t2_g << std::endl;
-	    std::cout << " Success! " << std::endl;
-	}
+            std::cout << " Success! " << std::endl;
+        }
         delete bssnCtx->get_mesh();
         delete bssnCtx;
         delete ets;
+
+    } else {
+        std::cout << RED << "Not starting solver, ts_mode needs to be set to 1!"
+                  << NRM << std::endl;
     }
 
     MPI_Finalize();

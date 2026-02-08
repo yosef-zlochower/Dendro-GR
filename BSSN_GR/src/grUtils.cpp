@@ -7,8 +7,12 @@
  */
 //
 
-#include "git_version_and_date.h"
 #include "grUtils.h"
+
+#include <tuple>
+
+#include "base.h"
+#include "git_version_and_date.h"
 #include "parameters.h"
 
 namespace bssn {
@@ -18,7 +22,7 @@ void printGitInformation(int rank, std::vector<std::string> arg_s) {
         std::cout << YLW << "  COMPILED ON  -  " << compile_info::compileDate
                   << NRM << std::endl;
         std::cout << YLW << "  LATEST GIT HASH - " << compile_info::currGitHash
-                  << compile_info::dirtyStatus << std::endl;
+                  << compile_info::dirtyStatus << NRM << std::endl;
     }
 
     for (size_t ii = 1; ii < arg_s.size(); ++ii) {
@@ -123,6 +127,7 @@ void readParamJSONFile(const char* fName, MPI_Comm comm) {
     bssn::BSSN_GRID_MAX_Y = parFile["BSSN_GRID_MAX_Y"];
     bssn::BSSN_GRID_MIN_Z = parFile["BSSN_GRID_MIN_Z"];
     bssn::BSSN_GRID_MAX_Z = parFile["BSSN_GRID_MAX_Z"];
+
     bssn::ETA_CONST       = parFile["ETA_CONST"];
     bssn::ETA_R0          = parFile["ETA_R0"];
     bssn::ETA_DAMPING     = parFile["ETA_DAMPING"];
@@ -160,14 +165,46 @@ void readParamJSONFile(const char* fName, MPI_Comm comm) {
     bssn::BSSN_XI[1]       = (unsigned int)parFile["BSSN_XI"]["BSSN_XI_1"];
     bssn::BSSN_XI[2]       = (unsigned int)parFile["BSSN_XI"]["BSSN_XI_2"];
 
-    bssn::BSSN_ELE_ORDER   = parFile["BSSN_ELE_ORDER"];
-    bssn::CHI_FLOOR        = parFile["CHI_FLOOR"];
-    bssn::BSSN_TRK0        = parFile["BSSN_TRK0"];
+    if (parFile.find("BSSN_ELE_ORDER") != parFile.end())
+        bssn::BSSN_ELE_ORDER = parFile["BSSN_ELE_ORDER"];
+
+    bssn::CHI_FLOOR = parFile["CHI_FLOOR"];
+    bssn::BSSN_TRK0 = parFile["BSSN_TRK0"];
     if (parFile.find("DISSIPATION_TYPE") != parFile.end()) {
         bssn::DISSIPATION_TYPE = parFile["DISSIPATION_TYPE"];
     }
-    bssn::KO_DISS_SIGMA     = parFile["KO_DISS_SIGMA"];
+    bssn::KO_DISS_SIGMA = parFile["KO_DISS_SIGMA"];
 
+    if (parFile.find("BSSN_KO_SIGMA_SCALE_BY_CONFORMAL") != parFile.end()) {
+        bssn::BSSN_KO_SIGMA_SCALE_BY_CONFORMAL =
+            parFile["BSSN_KO_SIGMA_SCALE_BY_CONFORMAL"];
+    }
+
+    if (parFile.find("BSSN_KO_SIGMA_SCALE_BY_CONFORMAL_POST_MERGER_ONLY") !=
+        parFile.end()) {
+        bssn::BSSN_KO_SIGMA_SCALE_BY_CONFORMAL_POST_MERGER_ONLY =
+            parFile["BSSN_KO_SIGMA_SCALE_BY_CONFORMAL_POST_MERGER_ONLY"];
+    }
+
+    if (bssn::BSSN_KO_SIGMA_SCALE_BY_CONFORMAL_POST_MERGER_ONLY) {
+        bssn::BSSN_KO_SIGMA_SCALE_BY_CONFORMAL = false;
+    }
+    if (bssn::BSSN_KO_SIGMA_SCALE_BY_CONFORMAL) {
+        bssn::BSSN_CAKO_ENABLED = true;
+    }
+
+    if (parFile.find("BSSN_EPSILON_CAKO_GAUGE") != parFile.end()) {
+        bssn::BSSN_EPSILON_CAKO_GAUGE = parFile["BSSN_EPSILON_CAKO_GAUGE"];
+    }
+    if (parFile.find("BSSN_EPSILON_CAKO_OTHER") != parFile.end()) {
+        bssn::BSSN_EPSILON_CAKO_OTHER = parFile["BSSN_EPSILON_CAKO_OTHER"];
+    }
+
+    if (parFile.find("BSSN_CAHD_C") != parFile.end()) {
+        bssn::BSSN_CAHD_C = parFile["BSSN_CAHD_C"];
+    }
+
+    // Parameters for eta_damping function
     bssn::BSSN_ETA_R0       = parFile["BSSN_ETA_R0"];
     bssn::BSSN_ETA_POWER[0] = parFile["BSSN_ETA_POWER"]["BSSN_ETA_POWER_1"];
     bssn::BSSN_ETA_POWER[1] = parFile["BSSN_ETA_POWER"]["BSSN_ETA_POWER_2"];
@@ -180,8 +217,8 @@ void readParamJSONFile(const char* fName, MPI_Comm comm) {
         parFile["BSSN_WAVELET_TOL_FUNCTION_R0"];
     bssn::BSSN_WAVELET_TOL_FUNCTION_R1 =
         parFile["BSSN_WAVELET_TOL_FUNCTION_R1"];
-    bssn::BSSN_NUM_REFINE_VARS = parFile["BSSN_NUM_REFINE_VARS"];
 
+    bssn::BSSN_NUM_REFINE_VARS = parFile["BSSN_NUM_REFINE_VARS"];
     for (unsigned int i = 0; i < bssn::BSSN_NUM_REFINE_VARS; i++)
         bssn::BSSN_REFINE_VARIABLE_INDICES[i] =
             parFile["BSSN_REFINE_VARIABLE_INDICES"][i];
@@ -199,17 +236,19 @@ void readParamJSONFile(const char* fName, MPI_Comm comm) {
         bssn::BSSN_VTU_OUTPUT_CONST_INDICES[i] =
             parFile["BSSN_VTU_OUTPUT_CONST_INDICES"][i];
 
-    if (parFile.find("BSSN_CFL_FACTOR") != parFile.end())
+    if (parFile.find("BSSN_CFL_FACTOR") != parFile.end()) {
         bssn::BSSN_CFL_FACTOR = parFile["BSSN_CFL_FACTOR"];
+    }
 
     if (parFile.find("BSSN_VTU_Z_SLICE_ONLY") != parFile.end())
         bssn::BSSN_VTU_Z_SLICE_ONLY = parFile["BSSN_VTU_Z_SLICE_ONLY"];
 
-    if (parFile.find("BSSN_GW_EXTRACT_FREQ") != parFile.end())
+    if (parFile.find("BSSN_GW_EXTRACT_FREQ") != parFile.end()) {
         bssn::BSSN_GW_EXTRACT_FREQ = parFile["BSSN_GW_EXTRACT_FREQ"];
-    else
+    } else {
         bssn::BSSN_GW_EXTRACT_FREQ =
             std::max(1u, bssn::BSSN_IO_OUTPUT_FREQ >> 1u);
+    }
 
     if (parFile.find("BSSN_TIME_STEP_OUTPUT_FREQ") != parFile.end()) {
         bssn::BSSN_TIME_STEP_OUTPUT_FREQ =
@@ -319,16 +358,20 @@ void readParamJSONFile(const char* fName, MPI_Comm comm) {
     if (parFile.find("TPID_FILEPREFIX") != parFile.end())
         TPID::FILE_PREFIX = parFile["TPID_FILEPREFIX"].get<std::string>();
 
+    if (parFile.find("TPID_REPLACE_LAPSE_WITH_SQRT_CHI") != parFile.end())
+        TPID::replace_lapse_with_sqrt_chi =
+            parFile["TPID_REPLACE_LAPSE_WITH_SQRT_CHI"];
+
     if (parFile.find("EXTRACTION_VAR_ID") != parFile.end())
         BHLOC::EXTRACTION_VAR_ID = parFile["EXTRACTION_VAR_ID"];
 
     if (parFile.find("EXTRACTION_TOL") != parFile.end())
         BHLOC::EXTRACTION_TOL = parFile["EXTRACTION_TOL"];
 
-    vtu_len                = BSSN_VTU_FILE_PREFIX.size();
-    chp_len                = BSSN_CHKPT_FILE_PREFIX.size();
-    prf_len                = BSSN_PROFILE_FILE_PREFIX.size();
-    tpf_len                = TPID::FILE_PREFIX.size();
+    if (parFile.find("BSSN_USE_SET_REF_MODE_FOR_INITIAL_CONVERGE") !=
+        parFile.end())
+        bssn::BSSN_USE_SET_REF_MODE_FOR_INITIAL_CONVERGE =
+            parFile["BSSN_USE_SET_REF_MODE_FOR_INITIAL_CONVERGE"];
 
     GW::BSSN_GW_NUM_RADAII = parFile["BSSN_GW_NUM_RADAII"];
     GW::BSSN_GW_NUM_LMODES = parFile["BSSN_GW_NUM_LMODES"];
@@ -355,60 +398,6 @@ void readParamJSONFile(const char* fName, MPI_Comm comm) {
             parFile["BSSN_USE_SET_REF_MODE_FOR_INITIAL_CONVERGE"];
     }
 
-    // Additional parameters [from rit-devel]
-    if (parFile.find("BSSN_BOX_NUM_LEVELS") != parFile.end()) {
-        for (unsigned int i = 0; i < 2; i++)
-            bssn::BSSN_BOX_NUM_LEVELS[i] = parFile["BSSN_BOX_NUM_LEVELS"][i];
-    } else if (bssn::BSSN_REFINEMENT_MODE == SPHERE_IN_SPHERE) {
-        fprintf(stderr, "You must specify BSSN_BOX_NUM_LEVELS\n");
-        exit(-1);
-    }
-
-    if (parFile.find("BSSN_CHI_NUM_VALUES") != parFile.end()) {
-        bssn::BSSN_CHI_NUM_VALUES = parFile["BSSN_CHI_NUM_VALUES"];
-    } 
-
-    if (parFile.find("BSSN_BOX_TYPE") != parFile.end()) {
-        bssn::BSSN_BOX_TYPE = parFile["BSSN_BOX_TYPE"];
-    }
-
-    if (parFile.find("WALL_TIME") != parFile.end()) {
-        bssn::WALL_TIME = parFile["WALL_TIME"];
-    }
-
-    if (parFile.find("BSSN_SIS_TO_CONSTRAINT_WAMR_TRANSITION_TIME") != parFile.end()) {
-        bssn::BSSN_SIS_TO_CONSTRAINT_WAMR_TRANSITION_TIME = parFile["BSSN_SIS_TO_CONSTRAINT_WAMR_TRANSITION_TIME"];
-    }
-
-    if (parFile.find("BSSN_INNER_SIS_REGION_OUTER_BOUND") != parFile.end()) {
-        bssn::BSSN_INNER_SIS_REGION_OUTER_BOUND = parFile["BSSN_INNER_SIS_REGION_OUTER_BOUND"];
-    }
-
-    if (parFile.find("BSSN_BOX_RADII_1") != parFile.end()) {
-        for (unsigned int i = 0; i < bssn::BSSN_BOX_NUM_LEVELS[0]; i++)
-            bssn::BSSN_BOX_RADII_1[i] = parFile["BSSN_BOX_RADII_1"][i];
-    } else if (bssn::BSSN_REFINEMENT_MODE == SPHERE_IN_SPHERE) {
-        fprintf(stderr, "You must specify BSSN_BOX_RADII_1\n");
-        exit(-1);
-    }
-
-    if (parFile.find("BSSN_BOX_RADII_2") != parFile.end()) {
-        for (unsigned int i = 0; i < bssn::BSSN_BOX_NUM_LEVELS[1]; i++)
-            bssn::BSSN_BOX_RADII_2[i] = parFile["BSSN_BOX_RADII_2"][i];
-    } else if (bssn::BSSN_REFINEMENT_MODE == SPHERE_IN_SPHERE) {
-        fprintf(stderr, "You must specify BSSN_BOX_RADII_2\n");
-        exit(-1);
-    }
-
-    if (parFile.find("BSSN_CHI_VALUES") != parFile.end()) {
-        for (unsigned int i = 0; i < bssn::BSSN_CHI_NUM_VALUES; i++)
-            bssn::BSSN_CHI_VALUES[i] = parFile["BSSN_CHI_VALUES"][i];
-    }
-
-    if (parFile.find("BSSN_REL_ERR_MIN") != parFile.end()) {
-        bssn::BSSN_REL_ERR_MIN = parFile["BSSN_REL_ERR_MIN"];
-    }
-
     BSSN_OCTREE_MAX[0] = (double)(1u << bssn::BSSN_MAXDEPTH);
     BSSN_OCTREE_MAX[1] = (double)(1u << bssn::BSSN_MAXDEPTH);
     BSSN_OCTREE_MAX[2] = (double)(1u << bssn::BSSN_MAXDEPTH);
@@ -422,14 +411,14 @@ void readParamJSONFile(const char* fName, MPI_Comm comm) {
     BSSN_COMPD_MAX[2]  = bssn::BSSN_GRID_MAX_Z;
 
     if (BSSN_NUM_REFINE_VARS > BSSN_NUM_VARS) {
-        std::cout << "Error[parameter file]: Number of refine variables should "
-                     "be less than number of BSSN_NUM_VARS"
+        std::cout << "Error[parameter file]: Number of refine variables "
+                     "should be less than number of BSSN_NUM_VARS"
                   << std::endl;
         exit(0);
     }
     if (BSSN_NUM_EVOL_VARS_VTU_OUTPUT > BSSN_NUM_VARS) {
-        std::cout << "Error[parameter file]: Number of evolution VTU variables "
-                     "should be less than number of BSSN_NUM_VARS"
+        std::cout << "Error[parameter file]: Number of evolution VTU "
+                     "variables should be less than number of BSSN_NUM_VARS"
                   << std::endl;
         exit(0);
     }
@@ -442,7 +431,6 @@ void readParamJSONFile(const char* fName, MPI_Comm comm) {
     }
 
     BSSN_PADDING_WIDTH = BSSN_ELE_ORDER >> 1u;
-
     bssn::BSSN_BH_LOC[0] =
         Point(BH1.getBHCoordX(), BH1.getBHCoordY(), BH1.getBHCoordZ());
     bssn::BSSN_BH_LOC[1] =
@@ -536,9 +524,9 @@ void dumpParamFile(std::ostream& sout, int root, MPI_Comm comm) {
              << NRM << std::endl;
         sout << YLW << "\tBSSN_WAVELET_TOL_MAX:" << bssn::BSSN_WAVELET_TOL_MAX
              << NRM << std::endl;
-        sout << YLW << "\t:BSSN_WAVELET_TOL_FUNCTION_R0: "
+        sout << YLW << "\tBSSN_WAVELET_TOL_FUNCTION_R0: "
              << bssn::BSSN_WAVELET_TOL_FUNCTION_R0 << NRM << std::endl;
-        sout << YLW << "\t:BSSN_WAVELET_TOL_FUNCTION_R1: "
+        sout << YLW << "\tBSSN_WAVELET_TOL_FUNCTION_R1: "
              << bssn::BSSN_WAVELET_TOL_FUNCTION_R1 << NRM << std::endl;
         sout << YLW << "\tBSSN_LOAD_IMB_TOL :" << bssn::BSSN_LOAD_IMB_TOL << NRM
              << std::endl;
@@ -766,8 +754,25 @@ void dumpParamFile(std::ostream& sout, int root, MPI_Comm comm) {
         sout << YLW << "\tAEH_MAXITER: " << AEH::AEH_MAXITER << std::endl;
         sout << YLW << "\tAEH_ATOL: " << AEH::AEH_ATOL << std::endl;
         sout << YLW << "\tAEH_RTOL: " << AEH::AEH_RTOL << NRM << std::endl;
+
         sout << YLW << "\tAEH_ALPHA: " << AEH::AEH_ALPHA << std::endl;
         sout << YLW << "\tAEH_BETA: " << AEH::AEH_BETA << NRM << std::endl;
+
+        sout << YLW << "\tBSSN_KO_SIGMA_SCALE_BY_CONFORMAL: "
+             << (bssn::BSSN_KO_SIGMA_SCALE_BY_CONFORMAL ? "true" : "false")
+             << NRM << std::endl;
+        if (bssn::BSSN_KO_SIGMA_SCALE_BY_CONFORMAL) {
+            sout << YLW << "\t\tBSSN_PSILON_CAKO_GAUGE: "
+                 << bssn::BSSN_EPSILON_CAKO_GAUGE << NRM << std::endl;
+            sout << YLW << "\t\tBSSN_PSILON_CAKO_OTHER: "
+                 << bssn::BSSN_EPSILON_CAKO_OTHER << NRM << std::endl;
+        }
+        sout << YLW << "\tBSSN_NYQUIST_M: " << bssn::BSSN_NYQUIST_M << NRM
+             << std::endl;
+
+        sout << YLW << "\tBSSN_SSL_H: " << bssn::BSSN_SSL_H << NRM << std::endl;
+        sout << YLW << "\tBSSN_SSL_SIGMA: " << bssn::BSSN_SSL_SIGMA << NRM
+             << std::endl;
     }
 }
 
@@ -1221,6 +1226,7 @@ void kerrData(const double xx1, const double yy1, const double zz1,
 #include "Kerr.cpp"
 #include "kerr_vars.cpp"
 }
+
 void KerrSchildData(const double xx1, const double yy1, const double zz1,
                     double* var) {
     const double xx = GRIDX_TO_X(xx1);
@@ -1730,7 +1736,21 @@ double computeWTol(double x, double y, double z, double tolMin) {
 }
 
 double computeWTolDCoords(double x, double y, double z, double* hx) {
+    // set up a few useful values for computing the wavelet tolerances
+    // element order: how many points we have in each grid
     const unsigned int eleOrder = bssn::BSSN_ELE_ORDER;
+    // current simulation time
+    const double T_CURRENT      = bssn::BSSN_CURRENT_RK_COORD_TIME;
+    // radius (from the center of the grid)
+    const double r              = sqrt(x * x + y * y + z * z);
+    // distance between the BHs
+    const double dbh = (bssn::BSSN_BH_LOC[0] - bssn::BSSN_BH_LOC[1]).abs();
+    // set up grid point for relative distances to each BH
+    Point grid_p(x, y, z);
+    // distance from BH0
+    const double dbh0 = (grid_p - bssn::BSSN_BH_LOC[0]).abs();
+    // distance from BH1
+    const double dbh1 = (grid_p - bssn::BSSN_BH_LOC[1]).abs();
 
     if (bssn::BSSN_USE_WAVELET_TOL_FUNCTION == 1) {
         const double tolMax = bssn::BSSN_WAVELET_TOL_MAX;
@@ -1738,21 +1758,15 @@ double computeWTolDCoords(double x, double y, double z, double* hx) {
 
         const double R0     = bssn::BSSN_BH1_AMR_R;
         const double R1     = bssn::BSSN_BH2_AMR_R;
-        const double dbh = (bssn::BSSN_BH_LOC[0] - bssn::BSSN_BH_LOC[1]).abs();
 
         // R_Max is defined based on the initial separation.
         const double R_MAX =
             (bssn::BH1.getBHCoord() - bssn::BH2.getBHCoord()).abs() + R0 + R1;
 
-        Point grid_p(x, y, z);
-        const double dbh0 = (grid_p - bssn::BSSN_BH_LOC[0]).abs();
-        const double dbh1 = (grid_p - bssn::BSSN_BH_LOC[1]).abs();
-
 #ifdef BSSN_EXTRACT_GRAVITATIONAL_WAVES
         if (dbh < 0.1) {
             if ((dbh0 > R_MAX) && (dbh1 > R_MAX)) {
-                const double dr = sqrt(x * x + y * y + z * z);
-                if (dr < (GW::BSSN_GW_RADAII[GW::BSSN_GW_NUM_RADAII - 1] + 10))
+                if (r < (GW::BSSN_GW_RADAII[GW::BSSN_GW_NUM_RADAII - 1] + 10))
                     return BSSN_GW_REFINE_WTOL;
                 else
                     return tolMax;
@@ -1783,8 +1797,7 @@ double computeWTolDCoords(double x, double y, double z, double* hx) {
                             }
                         }
 
-                const double dr = sqrt(x * x + y * y + z * z);
-                if (dr < (GW::BSSN_GW_RADAII[GW::BSSN_GW_NUM_RADAII - 1] + 10))
+                if (r < (GW::BSSN_GW_RADAII[GW::BSSN_GW_NUM_RADAII - 1] + 10))
                     return BSSN_GW_REFINE_WTOL;
                 else
                     return tolMax;
@@ -1884,14 +1897,6 @@ double computeWTolDCoords(double x, double y, double z, double* hx) {
 #endif
 
     } else if (bssn::BSSN_USE_WAVELET_TOL_FUNCTION == 2) {
-        const double r   = sqrt(x * x + y * y + z * z);
-        const double dbh = (bssn::BSSN_BH_LOC[0] - bssn::BSSN_BH_LOC[1]).abs();
-
-        Point grid_p(x, y, z);
-        const double dbh0 = (grid_p - bssn::BSSN_BH_LOC[0]).abs();
-        const double dbh1 = (grid_p - bssn::BSSN_BH_LOC[1]).abs();
-        const double dr   = sqrt(x * x + y * y + z * z);
-
 #ifdef BSSN_EXTRACT_GRAVITATIONAL_WAVES
         if (dbh < 0.1) {
             const double R0 =
@@ -1929,14 +1934,7 @@ double computeWTolDCoords(double x, double y, double z, double* hx) {
 #endif
 
     } else if (bssn::BSSN_USE_WAVELET_TOL_FUNCTION == 3) {
-        const double r   = sqrt(x * x + y * y + z * z);
-        const double dbh = (bssn::BSSN_BH_LOC[0] - bssn::BSSN_BH_LOC[1]).abs();
-        Point grid_p(x, y, z);
-        const double dbh0            = (grid_p - bssn::BSSN_BH_LOC[0]).abs();
-        const double dbh1            = (grid_p - bssn::BSSN_BH_LOC[1]).abs();
-
         const double GW_R_SAFETY_FAC = 10.0;
-        const double T_CURRENT       = bssn::BSSN_CURRENT_RK_COORD_TIME;
         const double TIME_OFFSET_FAC = 5.0;
 
         if (T_CURRENT > bssn::BSSN_WAVELET_TOL_FUNCTION_R1 + TIME_OFFSET_FAC) {
@@ -1975,14 +1973,7 @@ double computeWTolDCoords(double x, double y, double z, double* hx) {
         }
 
     } else if (bssn::BSSN_USE_WAVELET_TOL_FUNCTION == 4) {
-        const double r   = sqrt(x * x + y * y + z * z);
-        const double dbh = (bssn::BSSN_BH_LOC[0] - bssn::BSSN_BH_LOC[1]).abs();
-        Point grid_p(x, y, z);
-        const double dbh0            = (grid_p - bssn::BSSN_BH_LOC[0]).abs();
-        const double dbh1            = (grid_p - bssn::BSSN_BH_LOC[1]).abs();
-
         const double GW_R_SAFETY_FAC = 10.0;
-        const double T_CURRENT       = bssn::BSSN_CURRENT_RK_COORD_TIME;
         const double TIME_OFFSET_FAC = 20.0;
 
         if (T_CURRENT > bssn::BSSN_WAVELET_TOL_FUNCTION_R1 + TIME_OFFSET_FAC) {
@@ -2034,7 +2025,6 @@ double computeWTolDCoords(double x, double y, double z, double* hx) {
         const double d2      = (grid_p - bssn::BSSN_BH_LOC[1]).abs();
         const double m1      = bssn::BSSN_BH1_MASS;
         const double m2      = bssn::BSSN_BH2_MASS;
-        const double t0      = bssn::BSSN_CURRENT_RK_COORD_TIME;
         const double toffset = 16.0;
 
         const double eps[3]  = {bssn::BSSN_WAVELET_TOL,
@@ -2045,16 +2035,78 @@ double computeWTolDCoords(double x, double y, double z, double* hx) {
         rad[1]    = 4.0 * rad[0];
         rad[3]    = GW::BSSN_GW_RADAII[GW::BSSN_GW_NUM_RADAII - 1];
 
-        double e1 = CalTolHelper(t0, d1, rad, eps, toffset);
+        double e1 = CalTolHelper(T_CURRENT, d1, rad, eps, toffset);
 
         rad[0]    = 3.0 * m2;
         rad[1]    = 4.0 * rad[0];
         rad[3]    = GW::BSSN_GW_RADAII[GW::BSSN_GW_NUM_RADAII - 1];
-        double e2 = CalTolHelper(t0, d2, rad, eps, toffset);
+        double e2 = CalTolHelper(T_CURRENT, d2, rad, eps, toffset);
 
         return std::min(e1, e2);
 
+    } else if (bssn::BSSN_USE_WAVELET_TOL_FUNCTION == 6) {
+        // WKB Aug 2024
+        // use different sensitivities for regions of spacetime which
+        // are causally connected to the BHs as cf regions which are
+        // spacelike, causally disconnected from the BHs.
+
+        ////////////////////////////////////////////////////////////////
+        // set up constants used in this function
+
+        // (max) orbital radius; use strictest refinement here
+        const double R_orbit     = 8;
+        // outer radius of simulation
+        const double R_max       = 400;
+
+        // expected lapse wave tail length (M) + backreflections
+        const double L           = 120;
+        // calculate the time after which a given radius's relationship
+        // with the grid center is both time-like & clean of lapse noise
+        const double t_lim       = std::max(r, (r + L) / std::sqrt(2));
+
+        // wavelet tolerance in acausal (or dirty) regions.
+        const double eps_disable = .001;
+        // time to fade from eps_disable to eps_goal
+        const double t_fade      = 100;
+
+        ////////////////////////////////////////////////////////////////
+        // set up goal resolution to hit in causal clean regions
+        // linearly interpolate log tolerances vs log radii
+
+        double eps_goal;
+        if (r <= R_orbit) {
+            eps_goal = bssn::BSSN_WAVELET_TOL;
+        } else {  // log falloff
+            // power we're raising the next expression to, scaling out radius
+            const double pwr =
+                std::log(r / R_orbit) / std::log(R_max / R_orbit);
+            // goal wavelet tolerance at end times
+            eps_goal =
+                bssn::BSSN_WAVELET_TOL *
+                std::pow(bssn::BSSN_WAVELET_TOL_MAX / bssn::BSSN_WAVELET_TOL,
+                         pwr);
+        }
+
+        ////////////////////////////////////////////////////////////////
+        // return time-delayed & smoothed wavelet tolerance
+
+        if (T_CURRENT < t_lim) {  // in spacelike or dirty region
+            // return max permissible wavelet tolerance
+            // effectively disabling / kneecapping WAMR
+            return eps_disable;
+        } else if (T_CURRENT > t_lim + t_fade) {  // in clean timelike region
+            // return standard wavelet tolerance
+            return eps_goal;
+        } else {  // in transition region
+            // return linear transition between log tolerance values
+            // slope of transition region
+            const double slope = std::log10(eps_goal / eps_disable) / t_fade;
+            const double lg_eps =
+                std::log10(eps_disable) + slope * (T_CURRENT - t_lim);
+            return std::pow(10.0, lg_eps);
+        }
     } else {
+        // return global wavelet tolerance, irrespective of position
         return bssn::BSSN_WAVELET_TOL;
     }
 }
@@ -2403,6 +2455,76 @@ void deallocate_bssn_deriv_workspace() {
         delete[] bssn::BSSN_DERIV_WORKSPACE;
         bssn::BSSN_DERIV_WORKSPACE = nullptr;
     }
+}
+
+std::tuple<std::string, std::string, std::string> encode_bh_locs(
+    const std::vector<std::pair<Point, Point>>& bh_history,
+    const std::vector<double>& bh_times) {
+    std::vector<unsigned char> bh1_bytes;
+    std::vector<unsigned char> bh2_bytes;
+
+    for (const auto& pair : bh_history) {
+        double coords1[3] = {pair.first.x(), pair.first.y(), pair.first.z()};
+        double coords2[3] = {pair.second.x(), pair.second.y(), pair.second.z()};
+
+        bh1_bytes.insert(
+            bh1_bytes.end(), reinterpret_cast<unsigned char*>(coords1),
+            reinterpret_cast<unsigned char*>(coords1) + sizeof(coords1));
+
+        bh2_bytes.insert(
+            bh2_bytes.end(), reinterpret_cast<unsigned char*>(coords2),
+            reinterpret_cast<unsigned char*>(coords2) + sizeof(coords2));
+    }
+
+    // with bytes available, now we can encode with base91_encoding
+    std::string bh1_str  = base<91>::encode(std::string(
+        reinterpret_cast<const char*>(bh1_bytes.data()), bh1_bytes.size()));
+
+    std::string bh2_str  = base<91>::encode(std::string(
+        reinterpret_cast<const char*>(bh2_bytes.data()), bh2_bytes.size()));
+
+    std::string time_str = base<91>::encode(
+        std::string(reinterpret_cast<const char*>(bh_times.data()),
+                    bh_times.size() * sizeof(double)));
+
+    return std::make_tuple(bh1_str, bh2_str, time_str);
+}
+
+std::tuple<std::vector<std::pair<Point, Point>>, std::vector<double>>
+decode_bh_locs(const std::string& bh1_str, const std::string& bh2_str,
+               const std::string& time_str) {
+    const size_t double_size = sizeof(double);
+    // decode the strings
+    std::string bh1_bytes    = base<91>::decode(bh1_str);
+    std::string bh2_bytes    = base<91>::decode(bh2_str);
+    std::string time_bytes   = base<91>::decode(time_str);
+
+    const size_t num_entries = time_bytes.size() / double_size;
+
+    // with the bytes back in place, we need to do a reinterpret cast for time
+    std::vector<double> time_vector;
+    std::vector<std::pair<Point, Point>> bh_locs;
+    for (size_t i = 0; i < num_entries; ++i) {
+        double value;
+        std::memcpy(&value, time_bytes.data() + i * double_size, double_size);
+        time_vector.push_back(value);
+
+        double bh_temp[3];
+
+        // create the point for b1
+        std::memcpy(&bh_temp, bh1_bytes.data() + i * double_size * 3,
+                    double_size * 3);
+        Point bh1Pt = Point(bh_temp[0], bh_temp[1], bh_temp[2]);
+
+        // then do it for bh2
+        std::memcpy(&bh_temp, bh2_bytes.data() + i * double_size * 3,
+                    double_size * 3);
+        Point bh2Pt = Point(bh_temp[0], bh_temp[1], bh_temp[2]);
+
+        bh_locs.push_back(std::make_pair(bh1Pt, bh2Pt));
+    }
+
+    return std::make_tuple(bh_locs, time_vector);
 }
 
 }  // end of namespace bssn
