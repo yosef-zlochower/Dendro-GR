@@ -107,10 +107,11 @@ BSSN_USE_FD_GRID_TRANSFER = false
 # 1 - EH
 # 2 - EH_WAMR
 # 3 - BH_LOC
-# 4 - SiS
-# 5 - SiS/WAMR
-# 6 - DeltaDeltaChi (contours) 
-BSSN_REFINEMENT_MODE = 6
+# 4 - BH_WAMR
+# 5 - SiS
+# 6 - SiS/WAMR
+# 7 - DeltaDeltaChi (contours)
+BSSN_REFINEMENT_MODE = 7
 
 # SiS/BiB: Box type (0-sphere, 1-box)
 BSSN_BOX_TYPE = 0
@@ -136,9 +137,9 @@ BSSN_CHI_VALUES = [-1e300, 4e-7, 3e-6, 2e-5, 0.0004, 0.005, 0.05, 0.45, 4.0, 25.
 BSSN_REFINEMENT_NUM_MODES = 2
 
 # SiS/WAMR: refinement method combination ordered from outer to inner grid
-# [4, 0] = SiS outside, WAMR inside
-# [0, 4] = WAMR outside, SiS inside
-BSSN_REFINEMENT_MODE_COMBINATION_ORDER = [0, 4]
+# [5, 0] = SiS outside, WAMR inside
+# [0, 5] = WAMR outside, SiS inside
+BSSN_REFINEMENT_MODE_COMBINATION_ORDER = [0, 5]
 
 # Wall time for writing final checkpoint file (in seconds)
 WALL_TIME = 1800 

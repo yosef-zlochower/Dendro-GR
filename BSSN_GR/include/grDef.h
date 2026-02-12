@@ -94,7 +94,7 @@ static const char* BSSN_CONSTRAINT_VAR_NAMES[] = {
  * EH_WAMR: both even horizon as well as WAMR based refinement.
  * BH_LOC BH location based refinement, if turned on track the bh locations.
  */
-enum RefinementMode{WAMR=0, EH, EH_WAMR, BH_LOC, SPHERE_IN_SPHERE, SIS_OUT_WAMR_IN, CONSTRAINT, CONSTRAINT_ERROR};
+enum RefinementMode{WAMR=0, EH, EH_WAMR, BH_LOC, BH_WAMR, SPHERE_IN_SPHERE, SIS_OUT_WAMR_IN, CONSTRAINT, CONSTRAINT_ERROR};
 
 }  // end of namespace bssn
 

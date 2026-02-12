@@ -1409,12 +1409,12 @@ bool BSSNCtx::is_remesh() {
         isRefine = (isR1 || isR2);
     } else if (bssn::BSSN_REFINEMENT_MODE == bssn::RefinementMode::BH_LOC) {
         isRefine = bssn::isRemeshBH(m_uiMesh, m_uiBHLoc);
-    } else if (bssn::BSSN_REFINEMENT_MODE == bssn::RefinementMode::EH_WAMR) {
+    } else if (bssn::BSSN_REFINEMENT_MODE == bssn::RefinementMode::BH_WAMR) {
         const bool isR1 = bssn::isRemeshBH(m_uiMesh, m_uiBHLoc);
         const bool isR2 =
-            bssn::isReMeshWAMR(m_uiMesh, (const double**)unzipVar, refineVarIds,
-                               bssn::BSSN_NUM_REFINE_VARS, waveletTolFunc,
-                               bssn::BSSN_DENDRO_AMR_FAC);
+            bssn::addRemeshWAMR(m_uiMesh, (const double**)unzipVar, refineVarIds,
+                                bssn::BSSN_NUM_REFINE_VARS, waveletTolFunc,
+                                bssn::BSSN_DENDRO_AMR_FAC);
         isRefine = (isR1 || isR2);
     } else if (bssn::BSSN_REFINEMENT_MODE == bssn::RefinementMode::SPHERE_IN_SPHERE) {
         isRefine = bssn::isRemeshSinS(m_uiMesh, m_uiBHLoc);
