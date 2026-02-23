@@ -413,6 +413,12 @@ if(WITH_CUDA)
   target_link_libraries(bssnSolver ${CUDA_LIBRARIES})
 endif()
 target_link_libraries(bssnSolver dendro5 ${LAPACK_LIBRARIES} ${MPI_LIBRARIES} ${GSL_LIBRARIES} m dendro_git_version_and_date)
+# GCC < 9 and Intel compilers using GCC 8 runtime require -lstdc++fs for std::filesystem
+if((CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS "9.0") OR
+   CMAKE_CXX_COMPILER_ID STREQUAL "Intel" OR
+   CMAKE_CXX_COMPILER_ID STREQUAL "IntelLLVM")
+    target_link_libraries(bssnSolver stdc++fs)
+endif()
 
 add_executable(bssnSolverCtx src/bssngr_main.cpp src/bssnCtx.cpp include/bssnAEH.h src/bssnAEH.cpp)
 target_include_directories(bssnSolverCtx PRIVATE ${CMAKE_SOURCE_DIR}/dendrolib/include)
@@ -434,6 +440,12 @@ target_include_directories(bssnSolverCtx PRIVATE ${CUDA_INCLUDE_DIRS})
 target_include_directories(bssnSolverCtx PRIVATE ${EXTERNAL_LIB_HEADERS})  # includes for the TOML11 library (and others)
 target_link_libraries(bssnSolverCtx bssn_lib dendro5 ${CUDA_LIBRARIES})
 target_link_libraries(bssnSolverCtx ${LAPACK_LIBRARIES} ${MPI_LIBRARIES} ${GSL_LIBRARIES} m dendro_git_version_and_date)
+# GCC < 9 and Intel compilers using GCC 8 runtime require -lstdc++fs for std::filesystem
+if((CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS "9.0") OR
+   CMAKE_CXX_COMPILER_ID STREQUAL "Intel" OR
+   CMAKE_CXX_COMPILER_ID STREQUAL "IntelLLVM")
+    target_link_libraries(bssnSolverCtx stdc++fs)
+endif()
 
 # set(SOURCE_FILES src/gr_scaling.cpp include/gr.h ${BSSN_INC} ${BSSN_SRC} ${CUDA_GR_INCLUDE_H} ${CUDA_GR_SRC_CPP})
 # add_executable(bssnScalingTest ${SOURCE_FILES})
