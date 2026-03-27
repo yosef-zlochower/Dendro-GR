@@ -58,10 +58,12 @@ BSSNCtx::BSSNCtx(ot::Mesh* pMesh) : Ctx() {
 
 BSSNCtx::~BSSNCtx() {
     for (unsigned int i = 0; i < VL::END; i++) m_var[i].destroy_vector();
-
+	    std::cout << " Finished Destroy Vector! " << std::endl;
     deallocate_bssn_deriv_workspace();
+	    std::cout << " Finished Deallocate Workspace! " << std::endl;
     ot::dealloc_mpi_ctx<DendroScalar>(m_uiMesh, m_mpi_ctx, BSSN_NUM_VARS,
                                       BSSN_ASYNC_COMM_K);
+	    std::cout << " Finished Destructor! " << std::endl;
 }
 
 int BSSNCtx::rhs(DVec* in, DVec* out, unsigned int sz, DendroScalar time) {

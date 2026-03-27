@@ -421,17 +421,25 @@ bssn:
 
             ets->evolve();
 
+            // NEW
             const double current_time = MPI_Wtime();
-            bool terminate_now        = false;
+            int terminate_flag        = 0; // Using int for safe MPI_Bcast
+
+            // 1. Rank 0 checks the time and makes the decision
             if (!ets->get_global_rank()) {
-                if ((current_time - start_time)/60 > WALL_TIME) {
-                    terminate_now = true;
+                if ((current_time - start_time) / 60.0 > WALL_TIME) {
+                    terminate_flag = 1;
                 }
             }
-            par::Mpi_Bcast(&terminate_now, 1, 0, ets->get_global_comm());
-            if (terminate_now) {
+
+            // 2. Broadcast the decision to ALL ranks
+            MPI_Bcast(&terminate_flag, 1, MPI_INT, 0, comm);
+
+            if (terminate_flag) {
                 break;
             }
+            // NEW
+
             if ((step % bssn::BSSN_REMESH_TEST_FREQ) == 0) {
                 const double current_wall_time = MPI_Wtime();
                 if (!(ets->get_global_rank())) {

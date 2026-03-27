@@ -456,7 +456,7 @@ namespace bssn
             unsigned int num_cell_vars = 1;
             const double* cell_data_pointers[] = {constraint_error_ptr};
             // DFVK NOTE: this will now save the data (hopefully)
-            if(BSSN_CURRENT_RK_STEP % BSSN_IO_OUTPUT_FREQ == 0)
+            if(BSSN_CURRENT_RK_STEP % BSSN_IO_OUTPUT_FREQ == 0 || BSSN_CURRENT_RK_STEP == 0)
 	    {
                 std::ostringstream filename;
                 filename << BSSN_VTU_FILE_PREFIX << "_wavelet_error_" << std::setfill('0') << std::setw(5) << TEMP_BSSN_STEP_VAL;
