@@ -365,7 +365,7 @@ namespace bssn
                     wrefEl->compute_wavelets_3D((double*)(eVecTmp.data()),isz,wCout,isBdyOct);
                     wtol_val = (normL2(wCout.data(),wCout.size())) / sqrt(wCout.size());
 		    // uncomment later !!!
-		    //constraint_error_ptr[ele] = wtol_val;
+		    constraint_error_ptr[ele] = wtol_val;
 
 		    {
 		    const unsigned int ln = 1u<<(m_uiMaxDepth-pNodes[ele].getLevel());
@@ -380,31 +380,31 @@ namespace bssn
 			if(rad2>0.8*bssn::BSSN_CURRENT_RK_COORD_TIME*bssn::BSSN_CURRENT_RK_COORD_TIME || rp < bssn::BSSN_INNER_SIS_REGION_OUTER_BOUND)
                         {
                             refine_flags[(ele-eleLocalBegin)] = OCT_IGNORE;
-                            constraint_error_ptr[ele] = 0;
+                            //constraint_error_ptr[ele] = 0;
 			    //std::cout<<"OCT_IGNORE: NOT IN WAMR REGION\n"<<std::endl;
                             continue;
                         }
 		    }
 
 		    unsigned int refine_flag_temp;
-		    int refine_flag_visual_temp;
+		    //int refine_flag_visual_temp;
                     const double l_max = wtol_val;
 		    if(l_max > tol_ele)
                     {
 			refine_flag_temp = OCT_SPLIT;
-			refine_flag_visual_temp = 1;
+			//refine_flag_visual_temp = 1;
 			//std::cout<<"OCT_SPLIT"<<std::endl;
                     }
                     else if(l_max < amr_coarse_fac *tol_ele)
                     {
 			refine_flag_temp = OCT_COARSE;
-			refine_flag_visual_temp = -1;
+			//refine_flag_visual_temp = -1;
 			//std::cout<<"OCT_COARSE"<<std::endl;
                     }
                     else
                     {
 			refine_flag_temp = OCT_NO_CHANGE;
-			refine_flag_visual_temp = 0;
+			//refine_flag_visual_temp = 0;
 			//std::cout<<"OCT_NO_CHANGE"<<std::endl;
                     }
 		    
@@ -423,30 +423,30 @@ namespace bssn
                     if(level_difference < -1)
 	            {
 			refine_flag_temp = OCT_SPLIT;
-			refine_flag_visual_temp = 1;
+			//refine_flag_visual_temp = 1;
 			//std::cout<<"replaced with OCT_SPLIT\n"<<std::endl;
 	            }	
 	            if(level_difference > 1)
 		    {
 			refine_flag_temp = OCT_COARSE;
-			refine_flag_visual_temp = -1;
+			//refine_flag_visual_temp = -1;
 			//std::cout<<"replaced with OCT_COARSE\n"<<std::endl;
 	            }
 		    if(level_difference == -1 && refine_flag_temp == OCT_COARSE)
 	            {
 			refine_flag_temp = OCT_NO_CHANGE;
-			refine_flag_visual_temp = 0;
+			//refine_flag_visual_temp = 0;
 			//std::cout<<"replaced with OCT_NO_CHANGE\n"<<std::endl;
 	            }
 	            if(level_difference == 1 && refine_flag_temp == OCT_SPLIT)
 	            {
 			refine_flag_temp = OCT_NO_CHANGE;
-			refine_flag_visual_temp = 0;
+			//refine_flag_visual_temp = 0;
 			//std::cout<<"replaced with OCT_NO_CHANGE\n"<<std::endl;
 	            }
 
 		    refine_flags[(ele-eleLocalBegin)] = refine_flag_temp;
-		    constraint_error_ptr[ele] = refine_flag_visual_temp;
+		    //constraint_error_ptr[ele] = refine_flag_visual_temp;
 		    
                 }
 
@@ -456,7 +456,7 @@ namespace bssn
             unsigned int num_cell_vars = 1;
             const double* cell_data_pointers[] = {constraint_error_ptr};
             // DFVK NOTE: this will now save the data (hopefully)
-            if(BSSN_CURRENT_RK_STEP % BSSN_IO_OUTPUT_FREQ == 0 || BSSN_CURRENT_RK_STEP == 0)
+            if(BSSN_CURRENT_RK_STEP == 0 || BSSN_CURRENT_RK_STEP % BSSN_IO_OUTPUT_FREQ == 0)
 	    {
                 std::ostringstream filename;
                 filename << BSSN_VTU_FILE_PREFIX << "_wavelet_error_" << std::setfill('0') << std::setw(5) << TEMP_BSSN_STEP_VAL;
