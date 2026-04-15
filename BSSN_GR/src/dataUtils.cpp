@@ -391,11 +391,12 @@ namespace bssn
                     const double l_max = wtol_val;
 		    if(l_max > tol_ele)
                     {
-			refine_flag_temp = OCT_SPLIT;
+			//refine_flag_temp = OCT_SPLIT;
+			refine_flag_temp = OCT_NO_CHANGE;
 			//refine_flag_visual_temp = 1;
 			//std::cout<<"OCT_SPLIT"<<std::endl;
                     }
-                    else if(l_max < amr_coarse_fac *tol_ele)
+                    else if(l_max < amr_coarse_fac * tol_ele)
                     {
 			refine_flag_temp = OCT_COARSE;
 			//refine_flag_visual_temp = -1;
@@ -422,7 +423,8 @@ namespace bssn
 
                     if(level_difference < -1)
 	            {
-			refine_flag_temp = OCT_SPLIT;
+			//refine_flag_temp = OCT_SPLIT;
+			refine_flag_temp = OCT_NO_CHANGE;
 			//refine_flag_visual_temp = 1;
 			//std::cout<<"replaced with OCT_SPLIT\n"<<std::endl;
 	            }	
@@ -456,7 +458,7 @@ namespace bssn
             unsigned int num_cell_vars = 1;
             const double* cell_data_pointers[] = {constraint_error_ptr};
             // DFVK NOTE: this will now save the data (hopefully)
-            if(BSSN_CURRENT_RK_STEP == 0 || BSSN_CURRENT_RK_STEP % BSSN_IO_OUTPUT_FREQ == 0)
+            if(BSSN_CURRENT_RK_STEP % BSSN_IO_OUTPUT_FREQ == 0)
 	    {
                 std::ostringstream filename;
                 filename << BSSN_VTU_FILE_PREFIX << "_wavelet_error_" << std::setfill('0') << std::setw(5) << TEMP_BSSN_STEP_VAL;
