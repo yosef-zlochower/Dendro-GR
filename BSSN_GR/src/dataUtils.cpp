@@ -358,7 +358,7 @@ namespace bssn
 
                     // initialize all the wavelet errors to zero initially. 
 
-		    pMesh->getUnzipElementalNodalValues(psi4_scaled, blk, ele, eVecTmp.data(), true);
+		    pMesh->getUnzipElementalNodalValues(unzippedcVec[varId_grad_grad2_chi_expression],blk, ele, eVecTmp.data(), true);
 
                     // computes the wavelets. 
 		    // wrefEl->compute_wavelets_3D((double*)(eVecTmp.data()),isz,wCout,isBdyOct,bssn::BSSN_REL_ERR_MIN);
@@ -391,8 +391,8 @@ namespace bssn
                     const double l_max = wtol_val;
 		    if(l_max > tol_ele)
                     {
-			refine_flag_temp = OCT_SPLIT;
-			//refine_flag_temp = OCT_NO_CHANGE;
+			//refine_flag_temp = OCT_SPLIT;
+			refine_flag_temp = OCT_NO_CHANGE;
 			//refine_flag_visual_temp = 1;
 			//std::cout<<"OCT_SPLIT"<<std::endl;
                     }
@@ -423,8 +423,8 @@ namespace bssn
 
                     if(level_difference < -1)
 	            {
-			refine_flag_temp = OCT_SPLIT;
-			//refine_flag_temp = OCT_NO_CHANGE;
+			//refine_flag_temp = OCT_SPLIT;
+			refine_flag_temp = OCT_NO_CHANGE;
 			//refine_flag_visual_temp = 1;
 			//std::cout<<"replaced with OCT_SPLIT\n"<<std::endl;
 	            }	
@@ -470,10 +470,11 @@ namespace bssn
             }
 
             delete wrefEl;
+            */
         }
-
-	pMesh->destroyVector(constraint_error_ptr);
-	*/
+        
+	//pMesh->destroyVector(constraint_error_ptr);
+	
         return refine_flags;
     }
 
