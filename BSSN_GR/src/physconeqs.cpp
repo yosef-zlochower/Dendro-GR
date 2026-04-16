@@ -702,7 +702,6 @@ grad2_chi[pp] = sqrt(grad2_2_2_chi[pp]*grad2_2_2_chi[pp] + grad2_1_1_chi[pp]*gra
 grad_chi[pp] = sqrt(grad_0_chi[pp]*grad_0_chi[pp] + grad_1_chi[pp]*grad_1_chi[pp] + grad_2_chi[pp]*grad_2_chi[pp]);	
 //grad_grad2_chi_expression[pp] = grad_chi[pp]/(1-chi[pp])/(1-chi[pp]);
 grad_grad2_chi_expression[pp] = grad2_chi[pp]/(1-chi[pp])/(1-chi[pp])/(1-chi[pp]);
-//grad_grad2_chi_expression[pp] = grad2_chi[pp]/chi[pp]/(1-chi[pp])/(1-chi[pp])/(1-chi[pp]);
 
 // Dendro: printing variables
 //--
