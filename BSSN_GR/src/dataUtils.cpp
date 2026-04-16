@@ -266,7 +266,7 @@ namespace bssn
 
 
         // create a vector to store the error in the constraint, by *element* (so block)
-        double* constraint_error_ptr = pMesh->createElementVector(0.0, 1);
+        //double* constraint_error_ptr = pMesh->createElementVector(0.0, 1);
 
 
         // now we can index into the constraint_violation_vec the same way as our unzippedVec, basically
@@ -357,15 +357,15 @@ namespace bssn
                     const double rp = std::min(rp1, rp2);
 
                     // initialize all the wavelet errors to zero initially. 
-                    
-		    pMesh->getUnzipElementalNodalValues(unzippedcVec[varId_grad_grad2_chi_expression],blk, ele, eVecTmp.data(), true);
+
+		    pMesh->getUnzipElementalNodalValues(psi4_scaled, blk, ele, eVecTmp.data(), true);
 
                     // computes the wavelets. 
 		    // wrefEl->compute_wavelets_3D((double*)(eVecTmp.data()),isz,wCout,isBdyOct,bssn::BSSN_REL_ERR_MIN);
                     wrefEl->compute_wavelets_3D((double*)(eVecTmp.data()),isz,wCout,isBdyOct);
                     wtol_val = (normL2(wCout.data(),wCout.size())) / sqrt(wCout.size());
 		    // uncomment later !!!
-		    constraint_error_ptr[ele] = wtol_val;
+		    //constraint_error_ptr[ele] = wtol_val;
 
 		    {
 		    const unsigned int ln = 1u<<(m_uiMaxDepth-pNodes[ele].getLevel());
@@ -376,7 +376,7 @@ namespace bssn
                         const Point oct_mid = Point(x,y,z);
                         Point tmp;
                         pMesh->octCoordToDomainCoord(oct_mid,tmp);
-		        const double rad2 = tmp.x()*tmp.x()+tmp.y()*tmp.y()+tmp.z()*tmp.z();
+			const double rad2 = tmp.x()*tmp.x()+tmp.y()*tmp.y()+tmp.z()*tmp.z();
 			if(rad2>0.8*bssn::BSSN_CURRENT_RK_COORD_TIME*bssn::BSSN_CURRENT_RK_COORD_TIME || rp < bssn::BSSN_INNER_SIS_REGION_OUTER_BOUND)
                         {
                             refine_flags[(ele-eleLocalBegin)] = OCT_IGNORE;
@@ -391,8 +391,8 @@ namespace bssn
                     const double l_max = wtol_val;
 		    if(l_max > tol_ele)
                     {
-			//refine_flag_temp = OCT_SPLIT;
-			refine_flag_temp = OCT_NO_CHANGE;
+			refine_flag_temp = OCT_SPLIT;
+			//refine_flag_temp = OCT_NO_CHANGE;
 			//refine_flag_visual_temp = 1;
 			//std::cout<<"OCT_SPLIT"<<std::endl;
                     }
@@ -423,8 +423,8 @@ namespace bssn
 
                     if(level_difference < -1)
 	            {
-			//refine_flag_temp = OCT_SPLIT;
-			refine_flag_temp = OCT_NO_CHANGE;
+			refine_flag_temp = OCT_SPLIT;
+			//refine_flag_temp = OCT_NO_CHANGE;
 			//refine_flag_visual_temp = 1;
 			//std::cout<<"replaced with OCT_SPLIT\n"<<std::endl;
 	            }	
@@ -454,6 +454,7 @@ namespace bssn
 
             }
 
+            /*
             const char* cell_data_names[] = {"wtol_error"};
             unsigned int num_cell_vars = 1;
             const double* cell_data_pointers[] = {constraint_error_ptr};
@@ -472,6 +473,7 @@ namespace bssn
         }
 
 	pMesh->destroyVector(constraint_error_ptr);
+	*/
         return refine_flags;
     }
 
