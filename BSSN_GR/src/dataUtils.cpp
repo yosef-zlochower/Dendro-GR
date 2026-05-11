@@ -210,7 +210,7 @@ namespace bssn
 
     }
 
-    bool isReMeshWAMRConstraint(ot::Mesh* pMesh, const Point* bhLoc, const double **unzippedcVec, const unsigned int varId_grad_grad2_chi_expression, std::function<double(double,double,double,double*)>wavelet_tol,double amr_coarse_fac)
+    bool isReMeshWAMRConstraint(ot::Mesh* pMesh, const Point* bhLoc, const double **unzippedcVec, const unsigned int varId_grad_grad2_chi_expression, /*const unsigned int varId_grad_K,*/ std::function<double(double,double,double,double*)>wavelet_tol,double amr_coarse_fac)
     {
         bool isOctChange=false;
         bool isOctChange_g =false;
@@ -225,7 +225,7 @@ namespace bssn
             refine_flags = bssn::isRemeshSinSInitHelper(pMesh, bhLoc);
             if(bssn::BSSN_CURRENT_RK_COORD_TIME > bssn::BSSN_SIS_TO_CONSTRAINT_WAMR_TRANSITION_TIME)
             {
-                refine_flags_WAMR = bssn::isReMeshWAMRConstraintHelper(pMesh, bhLoc, unzippedcVec, varId_grad_grad2_chi_expression, wavelet_tol, amr_coarse_fac);
+                refine_flags_WAMR = bssn::isReMeshWAMRConstraintHelper(pMesh, bhLoc, unzippedcVec, varId_grad_grad2_chi_expression, /*varId_grad_K,*/ wavelet_tol, amr_coarse_fac);
                 for(unsigned int ele = eleLocalBegin; ele < eleLocalEnd; ele++)
                 {
                   if(refine_flags_WAMR[ele-eleLocalBegin] != OCT_IGNORE)
@@ -242,7 +242,7 @@ namespace bssn
     }
 
 
-    std::vector<unsigned int> isReMeshWAMRConstraintHelper(ot::Mesh* pMesh, const Point* bhLoc, const double **unzippedcVec, const unsigned int varId_grad_grad2_chi_expression, std::function<double(double,double,double,double*)>wavelet_tol,double amr_coarse_fac)
+    std::vector<unsigned int> isReMeshWAMRConstraintHelper(ot::Mesh* pMesh, const Point* bhLoc, const double **unzippedcVec, const unsigned int varId_grad_grad2_chi_expression, /*const unsigned int varId_grad_K,*/ std::function<double(double,double,double,double*)>wavelet_tol,double amr_coarse_fac)
     {
         // if(!(pMesh->isReMeshUnzip((const double **)unzippedVec,varIds,numVars,wavelet_tol,bssn::BSSN_DENDRO_AMR_FAC)))
         //     return false;
@@ -266,12 +266,11 @@ namespace bssn
 
 
         // create a vector to store the error in the constraint, by *element* (so block)
-        //double* constraint_error_ptr = pMesh->createElementVector(0.0, 1);
+        double* constraint_error_ptr = pMesh->createElementVector(0.0, 1);
+	//double* constraint_error_ptr_alt = pMesh->createElementVector(0.0, 1);
 
 
         // now we can index into the constraint_violation_vec the same way as our unzippedVec, basically
-
-        //std::cout << "BSSN_WAVELET_TOL: " << bssn::BSSN_WAVELET_TOL  << std::endl;  
 
         if(pMesh->isActive())
         {
@@ -285,6 +284,10 @@ namespace bssn
             const ot::TreeNode* pNodes =pMesh->getAllElements().data();
 
             double wtol_val = 0;
+            
+            //wavelet::WaveletEl* wrefEl_alt = new wavelet::WaveletEl((RefElement*)refEl);
+
+            //double wtol_val_alt = 0;
 
             const std::vector<ot::Block>& blkList = pMesh->getLocalBlockList();
             const unsigned int eOrder = pMesh->getElementOrder();
@@ -295,11 +298,18 @@ namespace bssn
             
             const unsigned int sz_per_dof = nx*ny*nz;
             const unsigned int isz[] = {nx,ny,nz};
+
             std::vector<double> eVecTmp;
             eVecTmp.resize(sz_per_dof);
+	    
+	    //std::vector<double> eVecTmp_alt;
+            //eVecTmp_alt.resize(sz_per_dof);
 
             std::vector<double> wCout;
             wCout.resize(sz_per_dof);
+
+	    //std::vector<double> wCout_alt;
+            //wCout_alt.resize(sz_per_dof);
 
             for(unsigned int blk=0; blk <blkList.size(); blk++)
             {
@@ -322,11 +332,7 @@ namespace bssn
 		    const unsigned int ln = 1u<<(m_uiMaxDepth-pNodes[ele].getLevel());
                     double hx[3] ={dx_domain.x(),dx_domain.y(),dx_domain.z()};
                     const double tol_ele = wavelet_tol(domain_pt1.x(),domain_pt1.y(),domain_pt1.z(),hx);
-                    /*if(fabs(tol_ele - BSSN_WAVELET_TOL) > 1e-9)
-		    {
-                      fprintf(stderr,"tolerance is not correct\n");
-		      MPI_Abort(MPI_COMM_WORLD, -1);
-	            }*/
+
                     unsigned int punct_id = 0;
 
                     const double x_min = pNodes[ele].minX();
@@ -357,15 +363,23 @@ namespace bssn
                     const double rp = std::min(rp1, rp2);
 
                     // initialize all the wavelet errors to zero initially. 
-
-		    pMesh->getUnzipElementalNodalValues(unzippedcVec[varId_grad_grad2_chi_expression],blk, ele, eVecTmp.data(), true);
+		    pMesh->getUnzipElementalNodalValues(unzippedcVec[varId_grad_grad2_chi_expression], blk, ele, eVecTmp.data(), true);
 
                     // computes the wavelets. 
-		    // wrefEl->compute_wavelets_3D((double*)(eVecTmp.data()),isz,wCout,isBdyOct,bssn::BSSN_REL_ERR_MIN);
                     wrefEl->compute_wavelets_3D((double*)(eVecTmp.data()),isz,wCout,isBdyOct);
                     wtol_val = (normL2(wCout.data(),wCout.size())) / sqrt(wCout.size());
+
+                    // initialize all the wavelet errors to zero initially. 
+		    //pMesh->getUnzipElementalNodalValues(unzippedcVec[varId_grad_K], blk, ele, eVecTmp_alt.data(), true);
+
+		    /*
+                    // computes the wavelets. 
+                    wrefEl_alt->compute_wavelets_3D((double*)(eVecTmp_alt.data()),isz,wCout_alt,isBdyOct);
+                    wtol_val_alt = (normL2(wCout_alt.data(),wCout_alt.size())) / sqrt(wCout_alt.size());
+                    */
 		    // uncomment later !!!
-		    //constraint_error_ptr[ele] = wtol_val;
+		    constraint_error_ptr[ele] = wtol_val;
+                    //constraint_error_ptr_alt[ele] = 0; //wtol_val_alt;
 
 		    {
 		    const unsigned int ln = 1u<<(m_uiMaxDepth-pNodes[ele].getLevel());
@@ -377,6 +391,22 @@ namespace bssn
                         Point tmp;
                         pMesh->octCoordToDomainCoord(oct_mid,tmp);
 			const double rad2 = tmp.x()*tmp.x()+tmp.y()*tmp.y()+tmp.z()*tmp.z();
+			if(rp < bssn::BSSN_INNER_SIS_REGION_OUTER_BOUND)
+			{
+			    refine_flags[(ele-eleLocalBegin)] = OCT_IGNORE;
+			    continue;
+			}
+		        const double t_trans_diff = bssn::BSSN_CURRENT_RK_COORD_TIME - bssn::BSSN_SIS_TO_CONSTRAINT_WAMR_TRANSITION_TIME;	
+			if(rad2 > bssn::BSSN_SIS_TO_CONSTRAINT_WAMR_TRANSITION_TIME*bssn::BSSN_SIS_TO_CONSTRAINT_WAMR_TRANSITION_TIME)
+			{
+			    if(rad2 > bssn::BSSN_CURRENT_RK_COORD_TIME*bssn::BSSN_CURRENT_RK_COORD_TIME)
+			    {
+			        refine_flags[(ele-eleLocalBegin)] = OCT_IGNORE; 
+				continue;
+			    }
+			}
+			
+			/*
 			if(rad2>0.8*bssn::BSSN_CURRENT_RK_COORD_TIME*bssn::BSSN_CURRENT_RK_COORD_TIME || rp < bssn::BSSN_INNER_SIS_REGION_OUTER_BOUND)
                         {
                             refine_flags[(ele-eleLocalBegin)] = OCT_IGNORE;
@@ -384,6 +414,7 @@ namespace bssn
 			    //std::cout<<"OCT_IGNORE: NOT IN WAMR REGION\n"<<std::endl;
                             continue;
                         }
+			*/
 		    }
 
 		    unsigned int refine_flag_temp;
@@ -391,14 +422,15 @@ namespace bssn
                     const double l_max = wtol_val;
 		    if(l_max > tol_ele)
                     {
-			//refine_flag_temp = OCT_SPLIT;
-			refine_flag_temp = OCT_NO_CHANGE;
+			refine_flag_temp = OCT_SPLIT;
+			//refine_flag_temp = OCT_NO_CHANGE;
 			//refine_flag_visual_temp = 1;
 			//std::cout<<"OCT_SPLIT"<<std::endl;
                     }
                     else if(l_max < amr_coarse_fac * tol_ele)
                     {
-			refine_flag_temp = OCT_COARSE;
+			//refine_flag_temp = OCT_COARSE;
+			refine_flag_temp = OCT_NO_CHANGE;
 			//refine_flag_visual_temp = -1;
 			//std::cout<<"OCT_COARSE"<<std::endl;
                     }
@@ -409,7 +441,7 @@ namespace bssn
 			//std::cout<<"OCT_NO_CHANGE"<<std::endl;
                     }
 		    
-		    int level_difference;
+		    int level_difference = 0xdeadbeef;
 		    for (int level = 0; level < bssn::BSSN_BOX_NUM_LEVELS[punct_id]; level ++)
                     {
                       if (rp >= bssn_box_radii_at[punct_id][level])
@@ -419,18 +451,24 @@ namespace bssn
 		      }
                     }
 
+		    if (level_difference == 0xdeadbeef)
+		    {
+		        std::cerr<<"level difference not set!"<<std::endl; 
+			MPI_Abort(MPI_COMM_WORLD, -1);
+		    }
 		    //std::cout<<"level difference: "<<level_difference<<std::endl;
 
                     if(level_difference < -1)
 	            {
-			//refine_flag_temp = OCT_SPLIT;
-			refine_flag_temp = OCT_NO_CHANGE;
+			refine_flag_temp = OCT_SPLIT;
+			//refine_flag_temp = OCT_NO_CHANGE;
 			//refine_flag_visual_temp = 1;
 			//std::cout<<"replaced with OCT_SPLIT\n"<<std::endl;
 	            }	
 	            if(level_difference > 1)
 		    {
-			refine_flag_temp = OCT_COARSE;
+			//refine_flag_temp = OCT_COARSE;
+			refine_flag_temp = OCT_NO_CHANGE;
 			//refine_flag_visual_temp = -1;
 			//std::cout<<"replaced with OCT_COARSE\n"<<std::endl;
 	            }
@@ -453,13 +491,16 @@ namespace bssn
                 }
 
             }
-
-            /*
+            
             const char* cell_data_names[] = {"wtol_error"};
             unsigned int num_cell_vars = 1;
             const double* cell_data_pointers[] = {constraint_error_ptr};
             // DFVK NOTE: this will now save the data (hopefully)
-            if(BSSN_CURRENT_RK_STEP % BSSN_IO_OUTPUT_FREQ == 0)
+            
+	    //const char* cell_data_names_alt[] = {"wtol_error_alt"};
+            //const double* cell_data_pointers_alt[] = {constraint_error_ptr_alt};
+            
+	    if(BSSN_CURRENT_RK_STEP % BSSN_IO_OUTPUT_FREQ == 0)
 	    {
                 std::ostringstream filename;
                 filename << BSSN_VTU_FILE_PREFIX << "_wavelet_error_" << std::setfill('0') << std::setw(5) << TEMP_BSSN_STEP_VAL;
@@ -467,13 +508,24 @@ namespace bssn
                 io::vtk::mesh2vtuFine(
                     pMesh, filename.str().c_str(), 0, NULL, NULL, 0, NULL, NULL, num_cell_vars, cell_data_names, cell_data_pointers,false 
                 );
+
+                //std::ostringstream filename_alt;
+                //filename_alt << BSSN_VTU_FILE_PREFIX << "_wavelet_error_alt" << std::setfill('0') << std::setw(5) << TEMP_BSSN_STEP_VAL;
+
+                //io::vtk::mesh2vtuFine(
+                    //pMesh, filename_alt.str().c_str(), 0, NULL, NULL, 0, NULL, NULL, num_cell_vars, cell_data_names_alt, cell_data_pointers_alt,false 
+                //);
+
+
             }
 
             delete wrefEl;
-            */
+            //delete wrefEl_alt;
+
         }
         
-	//pMesh->destroyVector(constraint_error_ptr);
+	pMesh->destroyVector(constraint_error_ptr);
+	//pMesh->destroyVector(constraint_error_ptr_alt);
 	
         return refine_flags;
     }
@@ -489,7 +541,7 @@ namespace bssn
 
         if(pMesh->isActive())
 	{
-	    if(bssn::BSSN_CURRENT_RK_STEP = 0)
+	    if(bssn::BSSN_CURRENT_RK_STEP == 0)
 	    {
 		refine_flags = bssn::isRemeshSinSInitHelper(pMesh, bhLoc);
             }
@@ -568,16 +620,17 @@ namespace bssn
                  	while(true)
 		        {
 	                  chi_index--;
-		          if(LogAbsChiExpression > bssn::BSSN_CHI_VALUES[chi_index])
-			  {
-			      break;
-			  }
+		          
 			  if(chi_index < 0)
 	                  {
 		            std::cerr<<"chi reference index is negative: "<<chi_index<<std::endl; 
 			    MPI_Abort(MPI_COMM_WORLD, -1);
 	                  }
-	                }
+	                  if(LogAbsChiExpression > bssn::BSSN_CHI_VALUES[chi_index])
+			  {
+			    break;
+			  }
+			}
 			if(level < chi_index + bssn::BSSN_MINDEPTH_SIS)
 			{
 		          num_split++;	    
@@ -757,7 +810,7 @@ namespace bssn
                 const double rp = std::min(rp1, rp2);
                 int last_radii_index = bssn::BSSN_BOX_NUM_LEVELS[punct_id]-1;
                 unsigned int refinement_modes_num = bssn::BSSN_REFINEMENT_NUM_MODES;
-                if (bssn::BSSN_REFINEMENT_MODE_COMBINATION_ORDER[refinement_modes_num-1] == 4 & rp > bssn_box_radii_at[punct_id][0]) 
+                if (bssn::BSSN_REFINEMENT_MODE_COMBINATION_ORDER[refinement_modes_num-1] == 4 && rp > bssn_box_radii_at[punct_id][0]) 
 		// SiS INNER: [outer, inner] = [0, 4]
 		// example: SiS for [25.0, 10.0, 5.0, 2.5, 1.6, 0.0]
 		// if the radius in question is greater than the largest radii on the lists  

@@ -246,6 +246,9 @@ void readParamJSONFile(const char* fName, MPI_Comm comm) {
     if (parFile.find("BSSN_MINDEPTH") != parFile.end())
         bssn::BSSN_MINDEPTH = parFile["BSSN_MINDEPTH"];
 
+    if (parFile.find("BSSN_MINDEPTH_SIS") != parFile.end())
+        bssn::BSSN_MINDEPTH_SIS = parFile["BSSN_MINDEPTH_SIS"];
+
     if (parFile.find("BSSN_BH1_CONSTRAINT_R") != parFile.end())
         bssn::BSSN_BH1_CONSTRAINT_R = parFile["BSSN_BH1_CONSTRAINT_R"];
 

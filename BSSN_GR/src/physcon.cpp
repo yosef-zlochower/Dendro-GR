@@ -33,6 +33,7 @@ void physical_constraints(double **uZipConVars, const double **uZipVars,
   double * const grad2_chi = &uZipConVars[VAR_CONSTRAINT::C_GRAD2_CHI][offset];
   double * const grad_chi = &uZipConVars[VAR_CONSTRAINT::C_GRAD_CHI][offset];
   double * const grad_grad2_chi_expression = &uZipConVars[VAR_CONSTRAINT::C_GRAD_GRAD2_CHI_EXPRESSION][offset];
+  double * const grad_K = &uZipConVars[VAR_CONSTRAINT::C_GRAD_K][offset];
 
   const double * const alpha = &uZipVars[VAR::U_ALPHA][offset];
   const double * const chi = &uZipVars[VAR::U_CHI][offset];
