@@ -1216,7 +1216,7 @@ bool BSSNCtx::is_remesh() {
     } else if (bssn::BSSN_REFINEMENT_MODE == bssn::RefinementMode::CONSTRAINT) {
 	 isRefine = bssn::isRemeshConstraint(m_uiMesh, m_uiBHLoc, (const double**)unzipcVar, varId_grad2_chi, (const double**)unzipVar, bssn::VAR::U_CHI);
     } else if (bssn::BSSN_REFINEMENT_MODE == bssn::RefinementMode::CONSTRAINT_ERROR) { 
-	 isRefine = bssn::isReMeshWAMRConstraint(m_uiMesh, m_uiBHLoc, (const double**)unzipcVar, varId_grad_grad2_chi_expression, /*varId_grad_K,*/ waveletTolFunc, bssn::BSSN_DENDRO_AMR_FAC);
+	 isRefine = bssn::isReMeshWAMRConstraint(m_uiMesh, m_uiBHLoc, (const double**)unzipcVar, varId_grad_grad2_chi_expression, varId_grad_K, waveletTolFunc, bssn::BSSN_DENDRO_AMR_FAC);
 
     }
 

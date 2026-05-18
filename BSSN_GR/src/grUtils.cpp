@@ -7,6 +7,9 @@
  */
 //
 
+#include <fstream>
+
+#include "embedded_bssn_src.h"
 #include "git_version_and_date.h"
 #include "grUtils.h"
 #include "parameters.h"
@@ -27,6 +30,32 @@ void printGitInformation(int rank, std::vector<std::string> arg_s) {
                 std::cout << "Compile info only flag found, exiting..." << NRM
                           << std::endl
                           << std::endl;
+            MPI_Finalize();
+            exit(0);
+        } else if (arg_s[ii] == "--extract-source") {
+            if (ii + 1 >= arg_s.size()) {
+                if (!rank)
+                    std::cerr << "Usage: --extract-source <output.tar.gz>"
+                              << std::endl;
+                MPI_Finalize();
+                exit(1);
+            }
+            const std::string out_path = arg_s[ii + 1];
+            if (!rank) {
+                std::ofstream f(out_path, std::ios::binary);
+                if (!f) {
+                    std::cerr << "Failed to open for writing: " << out_path
+                              << std::endl;
+                    MPI_Finalize();
+                    exit(1);
+                }
+                f.write(reinterpret_cast<const char*>(bssn_src::kTarball),
+                        bssn_src::kTarballLen);
+                std::cout << YLW << "Source snapshot written to: " << out_path
+                          << NRM << std::endl;
+                std::cout << YLW << "Extract with: tar xzf " << out_path
+                          << NRM << std::endl;
+            }
             MPI_Finalize();
             exit(0);
         }

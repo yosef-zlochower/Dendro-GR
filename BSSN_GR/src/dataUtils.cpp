@@ -210,7 +210,7 @@ namespace bssn
 
     }
 
-    bool isReMeshWAMRConstraint(ot::Mesh* pMesh, const Point* bhLoc, const double **unzippedcVec, const unsigned int varId_grad_grad2_chi_expression, /*const unsigned int varId_grad_K,*/ std::function<double(double,double,double,double*)>wavelet_tol,double amr_coarse_fac)
+    bool isReMeshWAMRConstraint(ot::Mesh* pMesh, const Point* bhLoc, const double **unzippedcVec, const unsigned int varId_grad_grad2_chi_expression, const unsigned int varId_grad_K, std::function<double(double,double,double,double*)>wavelet_tol,double amr_coarse_fac)
     {
         bool isOctChange=false;
         bool isOctChange_g =false;
@@ -225,7 +225,7 @@ namespace bssn
             refine_flags = bssn::isRemeshSinSInitHelper(pMesh, bhLoc);
             if(bssn::BSSN_CURRENT_RK_COORD_TIME > bssn::BSSN_SIS_TO_CONSTRAINT_WAMR_TRANSITION_TIME)
             {
-                refine_flags_WAMR = bssn::isReMeshWAMRConstraintHelper(pMesh, bhLoc, unzippedcVec, varId_grad_grad2_chi_expression, /*varId_grad_K,*/ wavelet_tol, amr_coarse_fac);
+                refine_flags_WAMR = bssn::isReMeshWAMRConstraintHelper(pMesh, bhLoc, unzippedcVec, varId_grad_grad2_chi_expression, varId_grad_K, wavelet_tol, amr_coarse_fac);
                 for(unsigned int ele = eleLocalBegin; ele < eleLocalEnd; ele++)
                 {
                   if(refine_flags_WAMR[ele-eleLocalBegin] != OCT_IGNORE)
@@ -242,7 +242,7 @@ namespace bssn
     }
 
 
-    std::vector<unsigned int> isReMeshWAMRConstraintHelper(ot::Mesh* pMesh, const Point* bhLoc, const double **unzippedcVec, const unsigned int varId_grad_grad2_chi_expression, /*const unsigned int varId_grad_K,*/ std::function<double(double,double,double,double*)>wavelet_tol,double amr_coarse_fac)
+    std::vector<unsigned int> isReMeshWAMRConstraintHelper(ot::Mesh* pMesh, const Point* bhLoc, const double **unzippedcVec, const unsigned int varId_grad_grad2_chi_expression, const unsigned int varId_grad_K, std::function<double(double,double,double,double*)>wavelet_tol,double amr_coarse_fac)
     {
         // if(!(pMesh->isReMeshUnzip((const double **)unzippedVec,varIds,numVars,wavelet_tol,bssn::BSSN_DENDRO_AMR_FAC)))
         //     return false;
@@ -267,7 +267,7 @@ namespace bssn
 
         // create a vector to store the error in the constraint, by *element* (so block)
         double* constraint_error_ptr = pMesh->createElementVector(0.0, 1);
-	//double* constraint_error_ptr_alt = pMesh->createElementVector(0.0, 1);
+	double* constraint_error_ptr_alt = pMesh->createElementVector(0.0, 1);
 
 
         // now we can index into the constraint_violation_vec the same way as our unzippedVec, basically
@@ -285,9 +285,9 @@ namespace bssn
 
             double wtol_val = 0;
             
-            //wavelet::WaveletEl* wrefEl_alt = new wavelet::WaveletEl((RefElement*)refEl);
+            wavelet::WaveletEl* wrefEl_alt = new wavelet::WaveletEl((RefElement*)refEl);
 
-            //double wtol_val_alt = 0;
+            double wtol_val_alt = 0;
 
             const std::vector<ot::Block>& blkList = pMesh->getLocalBlockList();
             const unsigned int eOrder = pMesh->getElementOrder();
@@ -302,14 +302,14 @@ namespace bssn
             std::vector<double> eVecTmp;
             eVecTmp.resize(sz_per_dof);
 	    
-	    //std::vector<double> eVecTmp_alt;
-            //eVecTmp_alt.resize(sz_per_dof);
+	    std::vector<double> eVecTmp_alt;
+            eVecTmp_alt.resize(sz_per_dof);
 
             std::vector<double> wCout;
             wCout.resize(sz_per_dof);
 
-	    //std::vector<double> wCout_alt;
-            //wCout_alt.resize(sz_per_dof);
+	    std::vector<double> wCout_alt;
+            wCout_alt.resize(sz_per_dof);
 
             for(unsigned int blk=0; blk <blkList.size(); blk++)
             {
@@ -363,6 +363,7 @@ namespace bssn
                     const double rp = std::min(rp1, rp2);
 
                     // initialize all the wavelet errors to zero initially. 
+
 		    pMesh->getUnzipElementalNodalValues(unzippedcVec[varId_grad_grad2_chi_expression], blk, ele, eVecTmp.data(), true);
 
                     // computes the wavelets. 
@@ -370,16 +371,16 @@ namespace bssn
                     wtol_val = (normL2(wCout.data(),wCout.size())) / sqrt(wCout.size());
 
                     // initialize all the wavelet errors to zero initially. 
-		    //pMesh->getUnzipElementalNodalValues(unzippedcVec[varId_grad_K], blk, ele, eVecTmp_alt.data(), true);
+		    pMesh->getUnzipElementalNodalValues(unzippedcVec[varId_grad_K], blk, ele, eVecTmp_alt.data(), true);
 
-		    /*
+		    
                     // computes the wavelets. 
                     wrefEl_alt->compute_wavelets_3D((double*)(eVecTmp_alt.data()),isz,wCout_alt,isBdyOct);
                     wtol_val_alt = (normL2(wCout_alt.data(),wCout_alt.size())) / sqrt(wCout_alt.size());
-                    */
+                    
 		    // uncomment later !!!
 		    constraint_error_ptr[ele] = wtol_val;
-                    //constraint_error_ptr_alt[ele] = 0; //wtol_val_alt;
+                    constraint_error_ptr_alt[ele] = wtol_val_alt;
 
 		    {
 		    const unsigned int ln = 1u<<(m_uiMaxDepth-pNodes[ele].getLevel());
@@ -391,6 +392,7 @@ namespace bssn
                         Point tmp;
                         pMesh->octCoordToDomainCoord(oct_mid,tmp);
 			const double rad2 = tmp.x()*tmp.x()+tmp.y()*tmp.y()+tmp.z()*tmp.z();
+			/*
 			if(rp < bssn::BSSN_INNER_SIS_REGION_OUTER_BOUND)
 			{
 			    refine_flags[(ele-eleLocalBegin)] = OCT_IGNORE;
@@ -405,16 +407,12 @@ namespace bssn
 				continue;
 			    }
 			}
-			
-			/*
-			if(rad2>0.8*bssn::BSSN_CURRENT_RK_COORD_TIME*bssn::BSSN_CURRENT_RK_COORD_TIME || rp < bssn::BSSN_INNER_SIS_REGION_OUTER_BOUND)
-                        {
-                            refine_flags[(ele-eleLocalBegin)] = OCT_IGNORE;
-                            //constraint_error_ptr[ele] = 0;
-			    //std::cout<<"OCT_IGNORE: NOT IN WAMR REGION\n"<<std::endl;
-                            continue;
-                        }
 			*/
+			if(rp >= 0)
+			{
+			    refine_flags[(ele-eleLocalBegin)] = OCT_IGNORE;
+			    continue;
+			}
 		    }
 
 		    unsigned int refine_flag_temp;
@@ -497,35 +495,33 @@ namespace bssn
             const double* cell_data_pointers[] = {constraint_error_ptr};
             // DFVK NOTE: this will now save the data (hopefully)
             
-	    //const char* cell_data_names_alt[] = {"wtol_error_alt"};
-            //const double* cell_data_pointers_alt[] = {constraint_error_ptr_alt};
+	    const char* cell_data_names_alt[] = {"wtol_error_alt"};
+            const double* cell_data_pointers_alt[] = {constraint_error_ptr_alt};
             
-	    if(BSSN_CURRENT_RK_STEP % BSSN_IO_OUTPUT_FREQ == 0)
-	    {
+            if(BSSN_CURRENT_RK_STEP % BSSN_IO_OUTPUT_FREQ == 0)
+            {
+		
                 std::ostringstream filename;
                 filename << BSSN_VTU_FILE_PREFIX << "_wavelet_error_" << std::setfill('0') << std::setw(5) << TEMP_BSSN_STEP_VAL;
 
                 io::vtk::mesh2vtuFine(
-                    pMesh, filename.str().c_str(), 0, NULL, NULL, 0, NULL, NULL, num_cell_vars, cell_data_names, cell_data_pointers,false 
-                );
+                    pMesh, filename.str().c_str(), 0, NULL, NULL, 0, NULL, NULL, num_cell_vars, cell_data_names, cell_data_pointers, false);
+               
 
-                //std::ostringstream filename_alt;
-                //filename_alt << BSSN_VTU_FILE_PREFIX << "_wavelet_error_alt" << std::setfill('0') << std::setw(5) << TEMP_BSSN_STEP_VAL;
+                std::ostringstream filename_alt;
+                filename_alt << BSSN_VTU_FILE_PREFIX << "_wavelet_error_alt_" << std::setfill('0') << std::setw(5) << TEMP_BSSN_STEP_VAL;
 
-                //io::vtk::mesh2vtuFine(
-                    //pMesh, filename_alt.str().c_str(), 0, NULL, NULL, 0, NULL, NULL, num_cell_vars, cell_data_names_alt, cell_data_pointers_alt,false 
-                //);
-
-
+                io::vtk::mesh2vtuFine(
+                    pMesh, filename_alt.str().c_str(), 0, NULL, NULL, 0, NULL, NULL, num_cell_vars, cell_data_names_alt, cell_data_pointers_alt, false);
             }
 
             delete wrefEl;
-            //delete wrefEl_alt;
+            delete wrefEl_alt;
 
         }
         
 	pMesh->destroyVector(constraint_error_ptr);
-	//pMesh->destroyVector(constraint_error_ptr_alt);
+	pMesh->destroyVector(constraint_error_ptr_alt);
 	
         return refine_flags;
     }
