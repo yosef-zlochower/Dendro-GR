@@ -267,7 +267,7 @@ namespace bssn
 
         // create a vector to store the error in the constraint, by *element* (so block)
         double* constraint_error_ptr = pMesh->createElementVector(0.0, 1);
-	double* constraint_error_ptr_alt = pMesh->createElementVector(0.0, 1);
+	// double* constraint_error_ptr_alt = pMesh->createElementVector(0.0, 1);
 
 
         // now we can index into the constraint_violation_vec the same way as our unzippedVec, basically
@@ -285,9 +285,9 @@ namespace bssn
 
             double wtol_val = 0;
             
-            wavelet::WaveletEl* wrefEl_alt = new wavelet::WaveletEl((RefElement*)refEl);
+            // wavelet::WaveletEl* wrefEl_alt = new wavelet::WaveletEl((RefElement*)refEl);
 
-            double wtol_val_alt = 0;
+            // double wtol_val_alt = 0;
 
             const std::vector<ot::Block>& blkList = pMesh->getLocalBlockList();
             const unsigned int eOrder = pMesh->getElementOrder();
@@ -302,14 +302,14 @@ namespace bssn
             std::vector<double> eVecTmp;
             eVecTmp.resize(sz_per_dof);
 	    
-	    std::vector<double> eVecTmp_alt;
-            eVecTmp_alt.resize(sz_per_dof);
+	    // std::vector<double> eVecTmp_alt;
+            // eVecTmp_alt.resize(sz_per_dof);
 
             std::vector<double> wCout;
             wCout.resize(sz_per_dof);
 
-	    std::vector<double> wCout_alt;
-            wCout_alt.resize(sz_per_dof);
+	    // std::vector<double> wCout_alt;
+            // wCout_alt.resize(sz_per_dof);
 
             for(unsigned int blk=0; blk <blkList.size(); blk++)
             {
@@ -367,20 +367,22 @@ namespace bssn
 		    pMesh->getUnzipElementalNodalValues(unzippedcVec[varId_grad_grad2_chi_expression], blk, ele, eVecTmp.data(), true);
 
                     // computes the wavelets. 
-                    wrefEl->compute_wavelets_3D((double*)(eVecTmp.data()),isz,wCout,isBdyOct);
+		    wrefEl->compute_wavelets_3D((double*)(eVecTmp.data()),isz,wCout,isBdyOct,bssn::BSSN_REL_ERR_MIN);
+                    //wrefEl->compute_wavelets_3D((double*)(eVecTmp.data()),isz,wCout,isBdyOct);
                     wtol_val = (normL2(wCout.data(),wCout.size())) / sqrt(wCout.size());
 
                     // initialize all the wavelet errors to zero initially. 
-		    pMesh->getUnzipElementalNodalValues(unzippedcVec[varId_grad_K], blk, ele, eVecTmp_alt.data(), true);
+		    // pMesh->getUnzipElementalNodalValues(unzippedcVec[varId_grad_K], blk, ele, eVecTmp_alt.data(), true);
 
 		    
                     // computes the wavelets. 
-                    wrefEl_alt->compute_wavelets_3D((double*)(eVecTmp_alt.data()),isz,wCout_alt,isBdyOct);
-                    wtol_val_alt = (normL2(wCout_alt.data(),wCout_alt.size())) / sqrt(wCout_alt.size());
+		    // wrefEl_alt->compute_wavelets_3D((double*)(eVecTmp_alt.data()),isz,wCout_alt,isBdyOct,bssn::BSSN_REL_ERR_MIN);
+                    //wrefEl_alt->compute_wavelets_3D((double*)(eVecTmp_alt.data()),isz,wCout_alt,isBdyOct);
+                    // wtol_val_alt = (normL2(wCout_alt.data(),wCout_alt.size())) / sqrt(wCout_alt.size());
                     
 		    // uncomment later !!!
 		    constraint_error_ptr[ele] = wtol_val;
-                    constraint_error_ptr_alt[ele] = wtol_val_alt;
+                    // constraint_error_ptr_alt[ele] = wtol_val_alt;
 
 		    {
 		    const unsigned int ln = 1u<<(m_uiMaxDepth-pNodes[ele].getLevel());
@@ -408,11 +410,14 @@ namespace bssn
 			    }
 			}
 			*/
-			if(rp >= 0)
+
+			
+			if(rp == 0)
 			{
 			    refine_flags[(ele-eleLocalBegin)] = OCT_IGNORE;
 			    continue;
 			}
+			
 		    }
 
 		    unsigned int refine_flag_temp;
@@ -456,31 +461,27 @@ namespace bssn
 		    }
 		    //std::cout<<"level difference: "<<level_difference<<std::endl;
 
-                    if(level_difference < -1)
+                    // Asymmetric SiS window: WAMR may refine at most 1 level above SiS
+                    // but is not permitted to sit below it. Allowed range: level_difference in {0, 1}.
+                    if(level_difference < 0)
 	            {
+			// Below SiS target — force split regardless of WAMR
 			refine_flag_temp = OCT_SPLIT;
-			//refine_flag_temp = OCT_NO_CHANGE;
-			//refine_flag_visual_temp = 1;
-			//std::cout<<"replaced with OCT_SPLIT\n"<<std::endl;
-	            }	
+	            }
 	            if(level_difference > 1)
 		    {
-			//refine_flag_temp = OCT_COARSE;
-			refine_flag_temp = OCT_NO_CHANGE;
-			//refine_flag_visual_temp = -1;
-			//std::cout<<"replaced with OCT_COARSE\n"<<std::endl;
+			// More than 1 level above SiS ceiling — force coarsen
+			refine_flag_temp = OCT_COARSE;
 	            }
-		    if(level_difference == -1 && refine_flag_temp == OCT_COARSE)
+		    if(level_difference == 0 && refine_flag_temp == OCT_COARSE)
 	            {
+			// At SiS target — coarsening would drop below it, clamp
 			refine_flag_temp = OCT_NO_CHANGE;
-			//refine_flag_visual_temp = 0;
-			//std::cout<<"replaced with OCT_NO_CHANGE\n"<<std::endl;
 	            }
 	            if(level_difference == 1 && refine_flag_temp == OCT_SPLIT)
 	            {
+			// At SiS ceiling — further splitting would exceed it, clamp
 			refine_flag_temp = OCT_NO_CHANGE;
-			//refine_flag_visual_temp = 0;
-			//std::cout<<"replaced with OCT_NO_CHANGE\n"<<std::endl;
 	            }
 
 		    refine_flags[(ele-eleLocalBegin)] = refine_flag_temp;
@@ -495,8 +496,8 @@ namespace bssn
             const double* cell_data_pointers[] = {constraint_error_ptr};
             // DFVK NOTE: this will now save the data (hopefully)
             
-	    const char* cell_data_names_alt[] = {"wtol_error_alt"};
-            const double* cell_data_pointers_alt[] = {constraint_error_ptr_alt};
+	    // const char* cell_data_names_alt[] = {"wtol_error_alt"};
+            // const double* cell_data_pointers_alt[] = {constraint_error_ptr_alt};
             
             if(BSSN_CURRENT_RK_STEP % BSSN_IO_OUTPUT_FREQ == 0)
             {
@@ -508,20 +509,20 @@ namespace bssn
                     pMesh, filename.str().c_str(), 0, NULL, NULL, 0, NULL, NULL, num_cell_vars, cell_data_names, cell_data_pointers, false);
                
 
-                std::ostringstream filename_alt;
-                filename_alt << BSSN_VTU_FILE_PREFIX << "_wavelet_error_alt_" << std::setfill('0') << std::setw(5) << TEMP_BSSN_STEP_VAL;
+                // std::ostringstream filename_alt;
+                // filename_alt << BSSN_VTU_FILE_PREFIX << "_wavelet_error_alt_" << std::setfill('0') << std::setw(5) << TEMP_BSSN_STEP_VAL;
 
-                io::vtk::mesh2vtuFine(
-                    pMesh, filename_alt.str().c_str(), 0, NULL, NULL, 0, NULL, NULL, num_cell_vars, cell_data_names_alt, cell_data_pointers_alt, false);
+                // io::vtk::mesh2vtuFine(
+                    // pMesh, filename_alt.str().c_str(), 0, NULL, NULL, 0, NULL, NULL, num_cell_vars, cell_data_names_alt, cell_data_pointers_alt, false);
             }
 
             delete wrefEl;
-            delete wrefEl_alt;
+            // delete wrefEl_alt;
 
         }
         
 	pMesh->destroyVector(constraint_error_ptr);
-	pMesh->destroyVector(constraint_error_ptr_alt);
+	// pMesh->destroyVector(constraint_error_ptr_alt);
 	
         return refine_flags;
     }

@@ -379,7 +379,7 @@ target_include_directories(rhscpu_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inclu
 target_include_directories(rhscpu_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/cuda/include)
 target_include_directories(rhscpu_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/scripts)
 target_include_directories(rhscpu_test PRIVATE ${EXTERNAL_LIB_HEADERS})  # includes for the TOML11 library (and others)
-target_link_libraries(rhscpu_test bssn_lib dendro5 ${LAPACK_LIBRARIES} ${MPI_LIBRARIES} ${GSL_LIBRARIES} m dendro_git_version_and_date)
+target_link_libraries(rhscpu_test bssn_lib dendro5 ${LAPACK_LIBRARIES} ${MPI_LIBRARIES} ${GSL_LIBRARIES} m dendro_git_version_and_date bssn_embedded_source)
 
 #add_library(had_rhs STATIC src/hadrhs.F90)
 
@@ -404,7 +404,7 @@ if(WITH_CUDA)
     target_link_libraries(bssnSolver bssn_cuda)
     target_link_libraries(bssnSolver ${CUDA_LIBRARIES})
 endif()
-target_link_libraries(bssnSolver dendro5 ${LAPACK_LIBRARIES} ${MPI_LIBRARIES} ${GSL_LIBRARIES} m dendro_git_version_and_date)
+target_link_libraries(bssnSolver dendro5 ${LAPACK_LIBRARIES} ${MPI_LIBRARIES} ${GSL_LIBRARIES} m dendro_git_version_and_date bssn_embedded_source)
 
 add_executable(bssnSolverCtx src/bssngr_main.cpp src/bssnCtx.cpp)
 target_include_directories(bssnSolverCtx PRIVATE ${CMAKE_SOURCE_DIR}/dendrolib/include)
@@ -425,7 +425,7 @@ target_include_directories(bssnSolverCtx PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/scr
 target_include_directories(bssnSolverCtx PRIVATE ${CUDA_INCLUDE_DIRS})
 target_include_directories(bssnSolverCtx PRIVATE ${EXTERNAL_LIB_HEADERS})  # includes for the TOML11 library (and others)
 target_link_libraries(bssnSolverCtx bssn_lib dendro5 ${CUDA_LIBRARIES})
-target_link_libraries(bssnSolverCtx ${LAPACK_LIBRARIES} ${MPI_LIBRARIES} ${GSL_LIBRARIES} m dendro_git_version_and_date)
+target_link_libraries(bssnSolverCtx ${LAPACK_LIBRARIES} ${MPI_LIBRARIES} ${GSL_LIBRARIES} m dendro_git_version_and_date bssn_embedded_source)
 
 # set(SOURCE_FILES src/gr_scaling.cpp include/gr.h ${BSSN_INC} ${BSSN_SRC} ${CUDA_GR_INCLUDE_H} ${CUDA_GR_SRC_CPP})
 # add_executable(bssnScalingTest ${SOURCE_FILES})
@@ -473,7 +473,7 @@ if(WITH_CUDA)
     target_link_libraries(bssnWAMRTest bssn_cuda)
     target_link_libraries(bssnWAMRTest ${CUDA_LIBRARIES})
 endif()
-target_link_libraries(bssnWAMRTest dendro5 ${LAPACK_LIBRARIES} ${MPI_LIBRARIES} ${GSL_LIBRARIES} m dendro_git_version_and_date)
+target_link_libraries(bssnWAMRTest dendro5 ${LAPACK_LIBRARIES} ${MPI_LIBRARIES} ${GSL_LIBRARIES} m dendro_git_version_and_date bssn_embedded_source)
 
 
 
@@ -523,7 +523,7 @@ if(WITH_CUDA)
     target_link_libraries(checkDerivs bssn_cuda)
     target_link_libraries(checkDerivs ${CUDA_LIBRARIES})
 endif()
-target_link_libraries(checkDerivs dendro5 ${LAPACK_LIBRARIES} ${MPI_LIBRARIES} ${GSL_LIBRARIES} m dendro_git_version_and_date)
+target_link_libraries(checkDerivs dendro5 ${LAPACK_LIBRARIES} ${MPI_LIBRARIES} ${GSL_LIBRARIES} m dendro_git_version_and_date bssn_embedded_source)
 
 # if(WITH_CUDA)
 #     set(SOURCE_FILES cuda_gr/src/gpuBSSNExample.cpp ${BSSN_INC} ${BSSN_SRC} ${CUDA_GR_INCLUDE_H} ${CUDA_GR_SRC_CPP})
@@ -630,7 +630,7 @@ if(WITH_CUDA)
     target_link_libraries(zipUnzipTest ${CUDA_LIBRARIES})
 endif()
 
-target_link_libraries(zipUnzipTest dendro5 ${LAPACK_LIBRARIES} ${MPI_LIBRARIES} ${GSL_LIBRARIES} m dendro_git_version_and_date)
+target_link_libraries(zipUnzipTest dendro5 ${LAPACK_LIBRARIES} ${MPI_LIBRARIES} ${GSL_LIBRARIES} m dendro_git_version_and_date bssn_embedded_source)
 
 
 if(BSSN_EXTRACT_GRAVITATIONAL_WAVES)
@@ -664,6 +664,6 @@ if(WITH_CUDA)
     target_link_libraries(tpid bssn_cuda)
     target_link_libraries(tpid ${CUDA_LIBRARIES})
 endif()
-target_link_libraries(tpid dendro5 ${LAPACK_LIBRARIES} ${MPI_LIBRARIES} ${GSL_LIBRARIES} m dendro_git_version_and_date)
+target_link_libraries(tpid dendro5 ${LAPACK_LIBRARIES} ${MPI_LIBRARIES} ${GSL_LIBRARIES} m dendro_git_version_and_date bssn_embedded_source)
 
 
