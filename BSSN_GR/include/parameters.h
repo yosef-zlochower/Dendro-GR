@@ -31,8 +31,8 @@ extern unsigned int BSSN_PADDING_WIDTH;
 /**@brief number of variables*/
 static const unsigned int BSSN_NUM_VARS            = 24;
 
-/**@brief number of constraints variables*/
-static const unsigned int BSSN_CONSTRAINT_NUM_VARS = 6;
+/**@brief number of constraints variables (6 base + 3 RIT chi constraints)*/
+static const unsigned int BSSN_CONSTRAINT_NUM_VARS = 9;
 
 /***@brief number of RK45 stages*/
 static const unsigned int BSSN_RK45_STAGES         = 6;
@@ -356,6 +356,57 @@ extern double BSSN_EH_COARSEN_VAL;
 
 /**@brief: refinement mode for the application*/
 extern RefinementMode BSSN_REFINEMENT_MODE;
+
+// ===== RIT Sphere-in-Sphere / Box-in-Box + constraint-based refinement =====
+// (ported from chi-tests-SiS-limit; see BSSN_GR/doc/REFINEMENT_AND_PARAMS_rit.md)
+
+/**@brief: max length of the per-BH SiS radii / chi-value arrays*/
+static const unsigned int BSSN_BOX_MAX_RADII = 20;
+
+/**@brief: minimum refinement level for SiS / Box-in-Box*/
+extern unsigned int BSSN_MINDEPTH_SIS;
+
+/**@brief: number of SiS box levels for [BH1, BH2]*/
+extern unsigned int BSSN_BOX_NUM_LEVELS[2];
+
+/**@brief: SiS box/sphere radii for BH1 and BH2*/
+extern double BSSN_BOX_RADII_1[BSSN_BOX_MAX_RADII];
+extern double BSSN_BOX_RADII_2[BSSN_BOX_MAX_RADII];
+
+/**@brief: 0 = sphere (Euclidean distance), else = box (L-infinity distance)*/
+extern unsigned int BSSN_BOX_TYPE;
+
+/**@brief: grad2_chi contour thresholds for value-based CONSTRAINT refinement*/
+extern double BSSN_CHI_VALUES[BSSN_BOX_MAX_RADII];
+
+/**@brief: number of populated entries in BSSN_CHI_VALUES*/
+extern unsigned int BSSN_CHI_NUM_VALUES;
+
+/**@brief: coordinate time at which CONSTRAINT_ERROR switches from SiS to WAMR*/
+extern double BSSN_SIS_TO_CONSTRAINT_WAMR_TRANSITION_TIME;
+
+/**@brief: outer radius of the inner SiS region for CONSTRAINT_ERROR WAMR*/
+extern double BSSN_INNER_SIS_REGION_OUTER_BOUND;
+
+/**@brief: floor of the relative wavelet error: delta_f / max(BSSN_REL_ERR_MIN, |f|).
+ * (max-based floor, not additive; default 1.0 reproduces stock behavior.)
+ * Only takes effect when built against a dendrolib fork that consumes it. */
+extern double BSSN_REL_ERR_MIN;
+
+/**@brief: wall-clock time limit in MINUTES; terminate + checkpoint when exceeded*/
+extern double WALL_TIME;
+
+/**@brief: if true restore BSSN_WAVELET_TOL from the checkpoint on restart (stock
+ * behaviour); if false (default) keep the par-file value, allowing it to change. */
+extern bool BSSN_RESTORE_WAVELET_TOL_FROM_CHECKPOINT;
+
+/**@brief: TEMP debug step counter used by the CONSTRAINT_ERROR VTU error dump*/
+extern unsigned int TEMP_BSSN_STEP_VAL;
+
+/**@brief: if true, CONSTRAINT_ERROR dumps the per-element wavelet error to VTU
+ * (diagnostic; off by default to avoid extra I/O)*/
+extern bool BSSN_RIT_DUMP_WAVELET_ERROR;
+// ===========================================================================
 
 /**@brief: option to enable if the set refinement mode should be used for
  * initial grid converge */

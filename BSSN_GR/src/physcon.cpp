@@ -28,6 +28,11 @@ void physical_constraints(double **uZipConVars, const double **uZipVars,
     double *const mom2      = &uZipConVars[VAR_CONSTRAINT::C_MOM2][offset];
     double *const psi4_real = &uZipConVars[VAR_CONSTRAINT::C_PSI4_REAL][offset];
     double *const psi4_img  = &uZipConVars[VAR_CONSTRAINT::C_PSI4_IMG][offset];
+    // RIT constraint-based refinement variables (computed in physconeqs.cpp)
+    double *const grad_chi  = &uZipConVars[VAR_CONSTRAINT::C_GRAD_CHI][offset];
+    double *const grad2_chi = &uZipConVars[VAR_CONSTRAINT::C_GRAD2_CHI][offset];
+    double *const grad_grad2_chi_expression =
+        &uZipConVars[VAR_CONSTRAINT::C_GRAD_GRAD2_CHI_EXPRESSION][offset];
 
     const double *const alpha = &uZipVars[VAR::U_ALPHA][offset];
     const double *const chi   = &uZipVars[VAR::U_CHI][offset];

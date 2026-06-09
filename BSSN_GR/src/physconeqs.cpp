@@ -1569,3 +1569,19 @@ mom2[pp] =
     2.0 / 3.0 * grad_2_K[pp];
 // Dendro: reduced ops: 3968
 // Dendro: }}}
+
+// RIT constraint-based refinement variables (hand-written; see
+// BSSN_GR/doc/REFINEMENT_AND_PARAMS_rit.md). grad2_chi is the Frobenius norm of
+// the Hessian of chi (the sqrt is intentional -> a 2-norm); grad_chi is |grad chi|.
+grad2_chi[pp] =
+    sqrt(grad2_2_2_chi[pp] * grad2_2_2_chi[pp] +
+         grad2_1_1_chi[pp] * grad2_1_1_chi[pp] +
+         grad2_0_0_chi[pp] * grad2_0_0_chi[pp] +
+         2 * grad2_1_2_chi[pp] * grad2_1_2_chi[pp] +
+         2 * grad2_0_2_chi[pp] * grad2_0_2_chi[pp] +
+         2 * grad2_0_1_chi[pp] * grad2_0_1_chi[pp]);
+grad_chi[pp] = sqrt(grad_0_chi[pp] * grad_0_chi[pp] +
+                    grad_1_chi[pp] * grad_1_chi[pp] +
+                    grad_2_chi[pp] * grad_2_chi[pp]);
+grad_grad2_chi_expression[pp] =
+    grad2_chi[pp] / chi[pp] / (1 - chi[pp]) / (1 - chi[pp]) / (1 - chi[pp]);

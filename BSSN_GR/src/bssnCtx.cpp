@@ -15,6 +15,8 @@
 #include <mpi.h>
 #include <sys/types.h>
 
+#include "refinement_sis.h"
+
 #include <cstdint>
 #include <string>
 
@@ -1058,8 +1060,11 @@ int BSSNCtx::restore_checkpt() {
                 m_uiTinfo._m_uiTh   = checkPoint["DENDRO_TS_TIME_STEP_SIZE"];
                 m_uiElementOrder    = checkPoint["DENDRO_TS_ELEMENT_ORDER"];
 
-                bssn::BSSN_WAVELET_TOL =
-                    checkPoint["DENDRO_TS_WAVELET_TOLERANCE"];
+                // RIT: by default keep the par-file wavelet tol (allows changing
+                // it on restart); opt into stock behaviour with the parameter.
+                if (bssn::BSSN_RESTORE_WAVELET_TOL_FROM_CHECKPOINT)
+                    bssn::BSSN_WAVELET_TOL =
+                        checkPoint["DENDRO_TS_WAVELET_TOLERANCE"];
                 bssn::BSSN_LOAD_IMB_TOL =
                     checkPoint["DENDRO_TS_LOAD_IMB_TOLERANCE"];
 
@@ -1185,7 +1190,10 @@ int BSSNCtx::restore_checkpt() {
             m_uiTinfo._m_uiTh      = checkPoint["DENDRO_TS_TIME_STEP_SIZE"];
             m_uiElementOrder       = checkPoint["DENDRO_TS_ELEMENT_ORDER"];
 
-            bssn::BSSN_WAVELET_TOL = checkPoint["DENDRO_TS_WAVELET_TOLERANCE"];
+            // RIT: keep par-file wavelet tol on restart by default (see above).
+            if (bssn::BSSN_RESTORE_WAVELET_TOL_FROM_CHECKPOINT)
+                bssn::BSSN_WAVELET_TOL =
+                    checkPoint["DENDRO_TS_WAVELET_TOLERANCE"];
             bssn::BSSN_LOAD_IMB_TOL =
                 checkPoint["DENDRO_TS_LOAD_IMB_TOLERANCE"];
 
@@ -1509,6 +1517,47 @@ bool BSSNCtx::is_remesh() {
             bssn::BSSN_NUM_REFINE_VARS, waveletTolFunc, amr_coarse_fac);
 
         isRefine = (isR1 || isR2);
+    } else if (bssn::BSSN_REFINEMENT_MODE ==
+               bssn::RefinementMode::SPHERE_IN_SPHERE) {
+        // RIT Sphere-in-Sphere / Box-in-Box (see refinement_sis.{cpp,h})
+        if (bssn::BSSN_BOX_NUM_LEVELS[0] == 0 ||
+            bssn::BSSN_BOX_NUM_LEVELS[1] == 0) {
+            if (!m_uiMesh->getMPIRankGlobal())
+                std::cerr << "[BSSN] SPHERE_IN_SPHERE requires BSSN_BOX_NUM_LEVELS"
+                             " and BSSN_BOX_RADII_1/2 to be set in the par file."
+                          << std::endl;
+            MPI_Abort(comm, -1);
+        }
+        isRefine = bssn::isRemeshSinS(m_uiMesh, m_uiBHLoc);
+    } else if (bssn::BSSN_REFINEMENT_MODE ==
+                   bssn::RefinementMode::CONSTRAINT ||
+               bssn::BSSN_REFINEMENT_MODE ==
+                   bssn::RefinementMode::CONSTRAINT_ERROR) {
+        // RIT constraint-based refinement: reuse master's constraint machinery.
+        this->compute_constraint_variables();
+        DVec& m_cvar_unz = m_var[VL::CPU_CV_UZ_IN];
+        DendroScalar* unzipCVar[BSSN_CONSTRAINT_NUM_VARS];
+        m_cvar_unz.to_2d(unzipCVar);
+
+        if (bssn::BSSN_REFINEMENT_MODE == bssn::RefinementMode::CONSTRAINT) {
+            isRefine = bssn::isRemeshConstraint(
+                m_uiMesh, m_uiBHLoc, (const double**)unzipCVar,
+                bssn::VAR_CONSTRAINT::C_GRAD2_CHI, (const double**)unzipVar,
+                bssn::VAR::U_CHI);
+        } else {  // CONSTRAINT_ERROR (constraint-based WAMR)
+            if (bssn::BSSN_BOX_NUM_LEVELS[0] == 0 ||
+                bssn::BSSN_BOX_NUM_LEVELS[1] == 0) {
+                if (!m_uiMesh->getMPIRankGlobal())
+                    std::cerr << "[BSSN] CONSTRAINT_ERROR requires "
+                                 "BSSN_BOX_NUM_LEVELS and BSSN_BOX_RADII_1/2."
+                              << std::endl;
+                MPI_Abort(comm, -1);
+            }
+            isRefine = bssn::isReMeshWAMRConstraint(
+                m_uiMesh, m_uiBHLoc, (const double**)unzipCVar,
+                bssn::VAR_CONSTRAINT::C_GRAD_GRAD2_CHI_EXPRESSION, waveletTolFunc,
+                amr_coarse_fac);
+        }
     }
 
     return isRefine;

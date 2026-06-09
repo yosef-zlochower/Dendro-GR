@@ -165,7 +165,7 @@ unsigned int BSSN_VTU_OUTPUT_EVOL_INDICES[BSSN_NUM_VARS] = {
     0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11,
     12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23};
 unsigned int BSSN_VTU_OUTPUT_CONST_INDICES[BSSN_CONSTRAINT_NUM_VARS] = {
-    0, 1, 2, 3, 4, 5};
+    0, 1, 2, 3, 4, 5, 6, 7, 8};
 
 unsigned int BSSN_XI[3]                         = {0, 0, 0};
 
@@ -178,6 +178,23 @@ double BSSN_EH_COARSEN_VAL                      = 0.4;
 
 // by default use WAMR refinement.
 RefinementMode BSSN_REFINEMENT_MODE             = RefinementMode::WAMR;
+
+// ===== RIT SiS / Box-in-Box + constraint-based refinement (see parameters.h) =====
+unsigned int BSSN_MINDEPTH_SIS                    = 7;
+unsigned int BSSN_BOX_NUM_LEVELS[2]              = {0, 0};
+double BSSN_BOX_RADII_1[BSSN_BOX_MAX_RADII]      = {0.0};
+double BSSN_BOX_RADII_2[BSSN_BOX_MAX_RADII]      = {0.0};
+unsigned int BSSN_BOX_TYPE                       = 0;
+double BSSN_CHI_VALUES[BSSN_BOX_MAX_RADII]       = {0.0};
+unsigned int BSSN_CHI_NUM_VALUES                 = 9;
+double BSSN_SIS_TO_CONSTRAINT_WAMR_TRANSITION_TIME = 60.0;
+double BSSN_INNER_SIS_REGION_OUTER_BOUND         = 5.0;
+double BSSN_REL_ERR_MIN                          = 1.0;
+double WALL_TIME                                 = 1.0e300;
+bool BSSN_RESTORE_WAVELET_TOL_FROM_CHECKPOINT    = false;
+unsigned int TEMP_BSSN_STEP_VAL                  = 0;
+bool BSSN_RIT_DUMP_WAVELET_ERROR                 = false;
+// ================================================================================
 
 bool BSSN_USE_SET_REF_MODE_FOR_INITIAL_CONVERGE = false;
 
@@ -533,6 +550,21 @@ void readParamTOMLFile(const char* fName, MPI_Comm comm) {
          bssn::BSSN_GW_EXTRACT_FREQ},
         {"BSSN_BH1_MAX_LEV", bssn::BSSN_BH1_MAX_LEV, bssn::BSSN_MAXDEPTH},
         {"BSSN_BH2_MAX_LEV", bssn::BSSN_BH2_MAX_LEV, bssn::BSSN_MAXDEPTH},
+
+        // RIT SiS / constraint-based refinement (arrays + WALL_TIME handled in the
+        // manual block below; see BSSN_GR/doc/REFINEMENT_AND_PARAMS_rit.md)
+        {"BSSN_MINDEPTH_SIS", bssn::BSSN_MINDEPTH_SIS, UseInitialValue},
+        {"BSSN_BOX_TYPE", bssn::BSSN_BOX_TYPE, UseInitialValue},
+        {"BSSN_CHI_NUM_VALUES", bssn::BSSN_CHI_NUM_VALUES, UseInitialValue},
+        {"BSSN_SIS_TO_CONSTRAINT_WAMR_TRANSITION_TIME",
+         bssn::BSSN_SIS_TO_CONSTRAINT_WAMR_TRANSITION_TIME, UseInitialValue},
+        {"BSSN_INNER_SIS_REGION_OUTER_BOUND",
+         bssn::BSSN_INNER_SIS_REGION_OUTER_BOUND, UseInitialValue},
+        {"BSSN_REL_ERR_MIN", bssn::BSSN_REL_ERR_MIN, UseInitialValue},
+        {"BSSN_RESTORE_WAVELET_TOL_FROM_CHECKPOINT",
+         bssn::BSSN_RESTORE_WAVELET_TOL_FROM_CHECKPOINT, UseInitialValue},
+        {"BSSN_RIT_DUMP_WAVELET_ERROR", bssn::BSSN_RIT_DUMP_WAVELET_ERROR,
+         UseInitialValue},
     };
 
     // then load the OPTIONAL parameters
@@ -615,6 +647,41 @@ void readParamTOMLFile(const char* fName, MPI_Comm comm) {
         bssn::BSSN_VTU_OUTPUT_CONST_INDICES[i] =
             parFile["BSSN_VTU_OUTPUT_CONST_INDICES"][i].as_integer();
     used_params.insert("BSSN_VTU_OUTPUT_CONST_INDICES");
+
+    // ---- RIT SiS / constraint-based refinement: optional array params + WALL_TIME ----
+    // These are optional (only meaningful for SPHERE_IN_SPHERE / CONSTRAINT* modes).
+    // Required-ness for SPHERE_IN_SPHERE is validated at point-of-use in is_remesh().
+    if (parFile.contains("BSSN_BOX_NUM_LEVELS")) {
+        for (unsigned int i = 0; i < 2; i++)
+            bssn::BSSN_BOX_NUM_LEVELS[i] =
+                parFile["BSSN_BOX_NUM_LEVELS"][i].as_integer();
+        used_params.insert("BSSN_BOX_NUM_LEVELS");
+    }
+    if (parFile.contains("BSSN_BOX_RADII_1")) {
+        for (unsigned int i = 0;
+             i < bssn::BSSN_BOX_NUM_LEVELS[0] && i < bssn::BSSN_BOX_MAX_RADII; i++)
+            bssn::BSSN_BOX_RADII_1[i] = parFile["BSSN_BOX_RADII_1"][i].as_floating();
+        used_params.insert("BSSN_BOX_RADII_1");
+    }
+    if (parFile.contains("BSSN_BOX_RADII_2")) {
+        for (unsigned int i = 0;
+             i < bssn::BSSN_BOX_NUM_LEVELS[1] && i < bssn::BSSN_BOX_MAX_RADII; i++)
+            bssn::BSSN_BOX_RADII_2[i] = parFile["BSSN_BOX_RADII_2"][i].as_floating();
+        used_params.insert("BSSN_BOX_RADII_2");
+    }
+    if (parFile.contains("BSSN_CHI_VALUES")) {
+        for (unsigned int i = 0;
+             i < bssn::BSSN_CHI_NUM_VALUES && i < bssn::BSSN_BOX_MAX_RADII; i++)
+            bssn::BSSN_CHI_VALUES[i] = parFile["BSSN_CHI_VALUES"][i].as_floating();
+        used_params.insert("BSSN_CHI_VALUES");
+    }
+    if (parFile.contains("WALL_TIME")) {
+        // WALL_TIME is in MINUTES; accept either an integer or a float in the par file.
+        const auto& v   = parFile["WALL_TIME"];
+        bssn::WALL_TIME = v.is_floating() ? v.as_floating() : (double)v.as_integer();
+        used_params.insert("WALL_TIME");
+    }
+    // ----------------------------------------------------------------------------------
 
     bssn::BSSN_IO_OUTPUT_FREQ_TRUE  = bssn::BSSN_IO_OUTPUT_FREQ;
     bssn::BSSN_GW_EXTRACT_FREQ_TRUE = bssn::BSSN_GW_EXTRACT_FREQ;

@@ -82,6 +82,7 @@ set(BSSN_SRC_FILES
   src/TPUtilities.cpp
   src/TwoPunctures.cpp
   src/dataUtils.cpp
+  src/refinement_sis.cpp
   src/hadrhs.F90
   src/trumpet.cpp
 )

@@ -1,5 +1,9 @@
 # Evolving BSSNOK formulation using Dendro
 
+> **RIT refinement modes & parameters** (Sphere-in-Sphere / Box-in-Box and
+> constraint-based refinement, plus the `BSSN_REFINEMENT_MODE` renumbering and new
+> parameters) are documented in [doc/REFINEMENT_AND_PARAMS_rit.md](doc/REFINEMENT_AND_PARAMS_rit.md).
+
 ## CMake Flags
 * BSSN_ENABLE_VTU_OUTPUT (ON) :  Enables .pvtu output that is used for solution visualization
 * BSSN_COMPUTE_CONSTRAINTS (ON) : Compute BSSN constraint violations

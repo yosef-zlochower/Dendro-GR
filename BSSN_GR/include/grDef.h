@@ -66,6 +66,9 @@ enum VAR {
  * C_MOM - Momentum constraint x, y, z
  * C_PSI4_REAL - real part of PSI4 scalar
  * C_PSI4_IMG  - imaginary part of PSI4 scalar
+ * C_GRAD_CHI  - magnitude of the gradient of chi (RIT constraint-based refinement)
+ * C_GRAD2_CHI - Frobenius norm of the Hessian of chi (RIT constraint-based refinement)
+ * C_GRAD_GRAD2_CHI_EXPRESSION - scaled grad2_chi expression used by CONSTRAINT_ERROR WAMR
  */
 enum VAR_CONSTRAINT {
     C_HAM = 0,
@@ -73,7 +76,10 @@ enum VAR_CONSTRAINT {
     C_MOM1,
     C_MOM2,
     C_PSI4_REAL,
-    C_PSI4_IMG
+    C_PSI4_IMG,
+    C_GRAD_CHI,
+    C_GRAD2_CHI,
+    C_GRAD_GRAD2_CHI_EXPRESSION
 };
 
 static const char* BSSN_VAR_NAMES[] = {
@@ -83,7 +89,9 @@ static const char* BSSN_VAR_NAMES[] = {
     "U_SYMAT0", "U_SYMAT1", "U_SYMAT2", "U_SYMAT3", "U_SYMAT4", "U_SYMAT5"};
 
 static const char* BSSN_CONSTRAINT_VAR_NAMES[] = {
-    "C_HAM", "C_MOM0", "C_MOM1", "C_MOM2", "C_PSI4_REAL", "C_PSI4_IMG"};
+    "C_HAM",        "C_MOM0",      "C_MOM1",
+    "C_MOM2",       "C_PSI4_REAL", "C_PSI4_IMG",
+    "C_GRAD_CHI",   "C_GRAD2_CHI", "C_GRAD_GRAD2_CHI_EXPRESSION"};
 
 /**
  * @brief Refinement mode types.
@@ -92,8 +100,24 @@ static const char* BSSN_CONSTRAINT_VAR_NAMES[] = {
  * EH_WAMR : both even horizon as well as WAMR based refinement.
  * BH_LOC : BH location based refinement, if turned on track the bh locations.
  * BH_WAMR : mixing WAMR + BH_LOC
+ * SPHERE_IN_SPHERE : RIT Sphere-in-Sphere / Box-in-Box static refinement.
+ * CONSTRAINT : RIT value-based refinement on log10|grad2_chi/chi^2|.
+ * CONSTRAINT_ERROR : RIT constraint-based WAMR (wavelet error on a chi constraint).
+ *
+ * NOTE: SPHERE_IN_SPHERE..CONSTRAINT_ERROR are appended after BH_WAMR; their numeric
+ * values (5,6,7) differ from the legacy chi-tests-SiS-limit branch. See
+ * BSSN_GR/doc/REFINEMENT_AND_PARAMS_rit.md.
  */
-enum RefinementMode { WAMR = 0, EH, EH_WAMR, BH_LOC, BH_WAMR};
+enum RefinementMode {
+    WAMR = 0,
+    EH,
+    EH_WAMR,
+    BH_LOC,
+    BH_WAMR,
+    SPHERE_IN_SPHERE,
+    CONSTRAINT,
+    CONSTRAINT_ERROR
+};
 
 }  // end of namespace bssn
 

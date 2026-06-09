@@ -401,6 +401,10 @@ int main(int argc, char** argv) {
         bool is_merge_executed = false;
         double t1              = MPI_Wtime();
 
+        // RIT: wall-clock termination + checkpoint-on-terminate.
+        const double wall_start_time = MPI_Wtime();
+        bool ckpt_written_this_iter  = false;
+
         bssnaeh::initialize_aeh();
 
         // capture the curr step
@@ -413,6 +417,7 @@ int main(int argc, char** argv) {
 
             bssn::BSSN_CURRENT_RK_COORD_TIME = time;
             bssn::BSSN_CURRENT_RK_STEP       = step;
+            bssn::TEMP_BSSN_STEP_VAL         = step;  // RIT: VTU wavelet-error dump
 
             const bool isActive              = ets->is_active();
             const unsigned int rank_global   = ets->get_global_rank();
@@ -600,12 +605,36 @@ int main(int argc, char** argv) {
             ets->evolve();
 
             // Write checkpoint  data
+            ckpt_written_this_iter = false;
             if (bssn::BSSN_CHECKPT_FREQ > 0 && (step % bssn::BSSN_CHECKPT_FREQ) == 0) {
                 bssnCtx->write_checkpt();
+                ckpt_written_this_iter = true;
+            }
+
+            // RIT: terminate on wall-clock limit (WALL_TIME in MINUTES), writing a
+            // checkpoint first. Rank 0 decides and broadcasts so all ranks agree.
+            int terminate_now = 0;
+            if (!rank_global &&
+                (MPI_Wtime() - wall_start_time) / 60.0 > bssn::WALL_TIME)
+                terminate_now = 1;
+            MPI_Bcast(&terminate_now, 1, MPI_INT, 0, ets->get_global_comm());
+            if (terminate_now) {
+                if (!ckpt_written_this_iter) {
+                    bssnCtx->write_checkpt();
+                    ckpt_written_this_iter = true;
+                }
+                if (!rank_global)
+                    std::cout << "[BSSN] WALL_TIME (" << bssn::WALL_TIME
+                              << " min) exceeded; checkpointed and terminating."
+                              << std::endl;
+                break;
             }
 
             bssnCtx->prepare_for_next_iter();
         }
+
+        // RIT: guarantee a final checkpoint if the last iteration did not write one.
+        if (!ckpt_written_this_iter) bssnCtx->write_checkpt();
 
 #if defined __PROFILE_CTX__ && defined __PROFILE_ETS__
         ets->dump_pt(outfile);
