@@ -9,6 +9,7 @@
 #include <iostream>
 #include <sstream>
 #include <vector>
+#include <time.h>
 
 #include "TreeNode.h"
 #include "aeh.h"
@@ -24,6 +25,13 @@
 #include "parameters.h"
 #include "rkBSSN.h"
 #include "sdc.h"
+
+void printtime(void) {
+    time_t t     = time(0);
+    struct tm tm = *localtime(&t);
+    printf("now: \n%d-%02d-%02d %02d:%02d:%02d\n", tm.tm_year + 1900,
+           tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+}
 
 int main(int argc, char** argv) {
     // 0- NUTS 1-UTS
@@ -566,6 +574,7 @@ int main(int argc, char** argv) {
                               << "\tdt: " << ets->ts_size() << "\t"
                               << std::endl;
 
+		printtime();
                 bssnCtx->terminal_output();
             }
 
@@ -647,9 +656,10 @@ int main(int argc, char** argv) {
         if (!(ets->get_global_rank()))
             std::cout << " ETS time (max) : " << t2_g << std::endl;
 
-        delete bssnCtx->get_mesh();
+        ot::Mesh* mesh_to_delete = bssnCtx->get_mesh();
         delete bssnCtx;
         delete ets;
+        delete mesh_to_delete;
 
     } else {
         std::cout << RED << "Not starting solver, ts_mode needs to be set to 1!"
