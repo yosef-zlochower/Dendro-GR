@@ -405,6 +405,11 @@ int BSSNCtx::initialize() {
     // calculate the initial size of the grid
     this->calculate_full_grid_size();
 
+    // deriv_x/deriv_xx/etc. are null function pointers until set here; must be
+    // set before the convergence loop in case is_remesh() calls
+    // compute_constraint_variables() (modes CONSTRAINT and CONSTRAINT_ERROR).
+    set_appropriate_derivs(bssn::BSSN_PADDING_WIDTH);
+
     do {
         // hold on to the "old numbers" for final check
         oldElements_g   = m_uiGlobalMeshElements;
@@ -1529,35 +1534,41 @@ bool BSSNCtx::is_remesh() {
             MPI_Abort(comm, -1);
         }
         isRefine = bssn::isRemeshSinS(m_uiMesh, m_uiBHLoc);
-    } else if (bssn::BSSN_REFINEMENT_MODE ==
-                   bssn::RefinementMode::CONSTRAINT ||
-               bssn::BSSN_REFINEMENT_MODE ==
-                   bssn::RefinementMode::CONSTRAINT_ERROR) {
-        // RIT constraint-based refinement: reuse master's constraint machinery.
+    } else if (bssn::BSSN_REFINEMENT_MODE == bssn::RefinementMode::CONSTRAINT) {
+        // RIT value-based constraint refinement: always needs constraint data.
         this->compute_constraint_variables();
         DVec& m_cvar_unz = m_var[VL::CPU_CV_UZ_IN];
         DendroScalar* unzipCVar[BSSN_CONSTRAINT_NUM_VARS];
         m_cvar_unz.to_2d(unzipCVar);
-
-        if (bssn::BSSN_REFINEMENT_MODE == bssn::RefinementMode::CONSTRAINT) {
-            isRefine = bssn::isRemeshConstraint(
-                m_uiMesh, m_uiBHLoc, (const double**)unzipCVar,
-                bssn::VAR_CONSTRAINT::C_GRAD2_CHI, (const double**)unzipVar,
-                bssn::VAR::U_CHI);
-        } else {  // CONSTRAINT_ERROR (constraint-based WAMR)
-            if (bssn::BSSN_BOX_NUM_LEVELS[0] == 0 ||
-                bssn::BSSN_BOX_NUM_LEVELS[1] == 0) {
-                if (!m_uiMesh->getMPIRankGlobal())
-                    std::cerr << "[BSSN] CONSTRAINT_ERROR requires "
-                                 "BSSN_BOX_NUM_LEVELS and BSSN_BOX_RADII_1/2."
-                              << std::endl;
-                MPI_Abort(comm, -1);
-            }
-            isRefine = bssn::isReMeshWAMRConstraint(
-                m_uiMesh, m_uiBHLoc, (const double**)unzipCVar,
-                bssn::VAR_CONSTRAINT::C_GRAD_GRAD2_CHI_EXPRESSION, waveletTolFunc,
-                amr_coarse_fac);
+        isRefine = bssn::isRemeshConstraint(
+            m_uiMesh, m_uiBHLoc, (const double**)unzipCVar,
+            bssn::VAR_CONSTRAINT::C_GRAD2_CHI, (const double**)unzipVar,
+            bssn::VAR::U_CHI);
+    } else if (bssn::BSSN_REFINEMENT_MODE ==
+               bssn::RefinementMode::CONSTRAINT_ERROR) {
+        // RIT constraint-based WAMR: only compute constraints after the SiS
+        // transition time, matching the guard inside isReMeshWAMRConstraint().
+        // Before the transition, only SiS geometry refinement runs and constraint
+        // data is not needed.
+        if (bssn::BSSN_CURRENT_RK_COORD_TIME >
+            bssn::BSSN_SIS_TO_CONSTRAINT_WAMR_TRANSITION_TIME) {
+            this->compute_constraint_variables();
         }
+        DVec& m_cvar_unz = m_var[VL::CPU_CV_UZ_IN];
+        DendroScalar* unzipCVar[BSSN_CONSTRAINT_NUM_VARS];
+        m_cvar_unz.to_2d(unzipCVar);
+        if (bssn::BSSN_BOX_NUM_LEVELS[0] == 0 ||
+            bssn::BSSN_BOX_NUM_LEVELS[1] == 0) {
+            if (!m_uiMesh->getMPIRankGlobal())
+                std::cerr << "[BSSN] CONSTRAINT_ERROR requires "
+                             "BSSN_BOX_NUM_LEVELS and BSSN_BOX_RADII_1/2."
+                          << std::endl;
+            MPI_Abort(comm, -1);
+        }
+        isRefine = bssn::isReMeshWAMRConstraint(
+            m_uiMesh, m_uiBHLoc, (const double**)unzipCVar,
+            bssn::VAR_CONSTRAINT::C_GRAD_GRAD2_CHI_EXPRESSION, waveletTolFunc,
+            amr_coarse_fac);
     }
 
     return isRefine;
