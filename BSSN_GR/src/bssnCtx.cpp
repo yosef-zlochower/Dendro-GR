@@ -1680,6 +1680,16 @@ int BSSNCtx::grid_transfer(const ot::Mesh* m_new) {
         m_new, ot::DVEC_TYPE::OCT_LOCAL_WITH_PADDING, ot::DVEC_LOC::HOST,
         BSSN_CONSTRAINT_NUM_VARS, true);
 
+    // The constraint vectors above were just destroyed and recreated empty for
+    // the new mesh (only the evolution vars are grid-transferred). Invalidate
+    // the "already computed this step" cache so the next
+    // compute_constraint_variables() actually recomputes on the new grid
+    // instead of returning stale data from the old mesh. Without this, the
+    // constraint-based refinement modes refine on wiped data during initial
+    // grid convergence, and the post-remesh constraint "refresh" in the main
+    // loop silently no-ops.
+    m_bConstraintsComputed = false;
+
     m_var[VL::CPU_EV_UZ_IN].create_vector(
         m_new, ot::DVEC_TYPE::OCT_LOCAL_WITH_PADDING, ot::DVEC_LOC::HOST,
         BSSN_NUM_VARS, true);
